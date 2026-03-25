@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import './ImageNumerateTool.css';
-//import defaultImage from '../assets/tilesets/4_Generic_Buildings_16x16.png'
+import defaultImage from '../assets/tilesets/4_Generic_Buildings_16x16.png';
 //import defaultImage from '../assets/spritesheets/character/Premade_Character_18.png';
-import defaultImage from '../assets/tilesets/2_City_Terrains_16x16.png'
+//import defaultImage from '../assets/tilesets/2_City_Terrains_16x16.png'
 
 const ImageNumerateTool = () => {
     const [imageSrc, setImageSrc] = useState(defaultImage);
@@ -14,6 +14,10 @@ const ImageNumerateTool = () => {
     const [isZeroIndexed, setIsZeroIndexed] = useState(true);
     const [isDragging, setIsDragging] = useState(false);
     const [isSelecting, setIsSelecting] = useState(false);
+    const [isCollisionMode, setIsCollisionMode] = useState(false);
+    const [collisionShapes, setCollisionShapes] = useState([]);
+    const [isDrawingShape, setIsDrawingShape] = useState(false);
+    const [shapeStart, setShapeStart] = useState(null);
     const [selectionStart, setSelectionStart] = useState(null);
     const [selectionEnd, setSelectionEnd] = useState(null);
     const [copiedIndex, setCopiedIndex] = useState(null);
@@ -23,9 +27,9 @@ const ImageNumerateTool = () => {
     const imgRef = useRef(null);
     const viewerRef = useRef(null);
 
-    // Global drag / selection handlers
+    // Global drag / selection / drawing handlers
     useEffect(() => {
-        if (!isDragging && !isSelecting) return;
+        if (!isDragging && !isSelecting && !isDrawingShape) return;
 
         const handleGlobalMouseMove = (e) => {
             if (!viewerRef.current) return;
@@ -44,6 +48,22 @@ const ImageNumerateTool = () => {
                 const col = Math.floor(x / tileWidth);
                 const row = Math.floor(y / tileHeight);
                 setSelectionEnd({ row, col });
+            } else if (isDrawingShape) {
+                const rect = viewerRef.current.getBoundingClientRect();
+                const x = Math.round((e.clientX - rect.left - imgPos.x) / zoom);
+                const y = Math.round((e.clientY - rect.top - imgPos.y) / zoom);
+
+                setCollisionShapes(prev => {
+                    const newShapes = [...prev];
+                    const activeShape = newShapes[newShapes.length - 1];
+                    if (activeShape) {
+                        activeShape.w = Math.abs(x - shapeStart.x);
+                        activeShape.h = Math.abs(y - shapeStart.y);
+                        activeShape.x = Math.min(x, shapeStart.x);
+                        activeShape.y = Math.min(y, shapeStart.y);
+                    }
+                    return newShapes;
+                });
             }
         };
 
@@ -53,6 +73,7 @@ const ImageNumerateTool = () => {
             }
             setIsDragging(false);
             setIsSelecting(false);
+            setIsDrawingShape(false);
         };
 
         window.addEventListener('mousemove', handleGlobalMouseMove);
@@ -62,7 +83,7 @@ const ImageNumerateTool = () => {
             window.removeEventListener('mousemove', handleGlobalMouseMove);
             window.removeEventListener('mouseup', handleGlobalMouseUp);
         };
-    }, [isDragging, isSelecting, startPos, imgPos, zoom, tileWidth, tileHeight, selectionStart, selectionEnd]);
+    }, [isDragging, isSelecting, isDrawingShape, startPos, imgPos, zoom, tileWidth, tileHeight, selectionStart, selectionEnd, shapeStart]);
 
     const processSelection = () => {
         if (!selectionStart || !selectionEnd) return;
@@ -103,6 +124,32 @@ const ImageNumerateTool = () => {
             setCopiedIndex(val);
             setTimeout(() => setCopiedIndex(null), 1500);
         });
+    };
+
+    const copyCollisionData = () => {
+        // Find selection bounds in pixels to normalize collision shapes relative to top-left of selection
+        if (!selectionStart && collisionShapes.length === 0) return;
+
+        const dataString = JSON.stringify(collisionShapes.map(s => ({
+            x: s.x,
+            y: s.y,
+            width: s.w,
+            height: s.h,
+            isSensor: !!s.isSensor
+        })));
+
+        navigator.clipboard.writeText(dataString).then(() => {
+            setCopiedIndex("Collision Data Copied");
+            setTimeout(() => setCopiedIndex(null), 2000);
+        });
+    };
+
+    const toggleSensor = (id) => {
+        setCollisionShapes(prev => prev.map(s => s.id === id ? { ...s, isSensor: !s.isSensor } : s));
+    };
+
+    const deleteShape = (id) => {
+        setCollisionShapes(prev => prev.filter(s => s.id !== id));
     };
 
     const handleFileUpload = (e) => {
@@ -147,7 +194,7 @@ const ImageNumerateTool = () => {
                 <div
                     key={i}
                     className={`tile-overlay ${isSelected ? 'selected' : ''}`}
-                    onClick={() => copyToClipboard(i)}
+                    onClick={() => !isCollisionMode && copyToClipboard(i)}
                     style={{
                         left: c * tileWidth * zoom,
                         top: r * tileHeight * zoom,
@@ -155,9 +202,11 @@ const ImageNumerateTool = () => {
                         height: tileHeight * zoom
                     }}
                 >
-                    <span className="tile-number" style={{ fontSize: `${Math.max(12, 14 * zoom)}px` }}>
-                        {isZeroIndexed ? i : i + 1}
-                    </span>
+                    {!isCollisionMode && (
+                        <span className="tile-number" style={{ fontSize: `${Math.max(12, 14 * zoom)}px` }}>
+                            {isZeroIndexed ? i : i + 1}
+                        </span>
+                    )}
                 </div>
             );
         }
@@ -168,10 +217,10 @@ const ImageNumerateTool = () => {
         <div className="numerate-tool-container">
             <nav className="tool-nav">
                 <Link to="/" className="back-link">← Back to Game</Link>
-                <h1>Image Numerate Tool</h1>
+                <h1>Image Numerate Tool {isCollisionMode && <span className="mode-badge">COLLISION MODE</span>}</h1>
                 {copiedIndex !== null && (
                     <div className="copy-toast">
-                        Copied Index: {copiedIndex}
+                        {copiedIndex}
                     </div>
                 )}
             </nav>
@@ -232,6 +281,7 @@ const ImageNumerateTool = () => {
                                 type="checkbox"
                                 checked={showAlways}
                                 onChange={(e) => setShowAlways(e.target.checked)}
+                                disabled={isCollisionMode}
                             />
                             Show All Numbers
                         </label>
@@ -245,6 +295,22 @@ const ImageNumerateTool = () => {
                         </label>
                     </section>
 
+                    <section className="control-group collision-controls">
+                        <label>Collision Tools</label>
+                        <button
+                            className={`tool-btn ${isCollisionMode ? 'active' : ''}`}
+                            onClick={() => setIsCollisionMode(!isCollisionMode)}
+                        >
+                            {isCollisionMode ? 'Exit Collision Mode' : 'Edit Collision Shape'}
+                        </button>
+                        {isCollisionMode && (
+                            <>
+                                <button className="tool-btn sub-btn" onClick={() => setCollisionShapes([])}>Clear All Shapes</button>
+                                <button className="tool-btn sub-btn primary" onClick={copyCollisionData}>Copy Collision JSON</button>
+                            </>
+                        )}
+                    </section>
+
                     <div className="info-panel">
                         <p>Image: {imgSize.width}x{imgSize.height}</p>
                         <p>Grid: {cols} x {rows}</p>
@@ -256,12 +322,19 @@ const ImageNumerateTool = () => {
                 <main className="tool-viewer">
                     <div
                         ref={viewerRef}
-                        className={`image-window ${isDragging ? 'is-dragging' : ''}`}
+                        className={`image-window ${isDragging ? 'is-dragging' : ''} ${isCollisionMode ? 'collision-mode' : ''}`}
                         style={{
-                            cursor: isDragging ? 'grabbing' : 'grab'
+                            cursor: isDragging ? 'grabbing' : (isCollisionMode ? 'crosshair' : 'grab')
                         }}
                         onMouseDown={(e) => {
-                            if (e.shiftKey) {
+                            if (isCollisionMode) {
+                                setIsDrawingShape(true);
+                                const rect = viewerRef.current.getBoundingClientRect();
+                                const x = Math.round((e.clientX - rect.left - imgPos.x) / zoom);
+                                const y = Math.round((e.clientY - rect.top - imgPos.y) / zoom);
+                                setShapeStart({ x, y });
+                                setCollisionShapes(prev => [...prev, { x, y, w: 0, h: 0, id: Date.now() }]);
+                            } else if (e.shiftKey) {
                                 setIsSelecting(true);
                                 const rect = viewerRef.current.getBoundingClientRect();
                                 const x = (e.clientX - rect.left - imgPos.x) / zoom;
@@ -305,6 +378,39 @@ const ImageNumerateTool = () => {
                             <div className={`grid-overlay ${showAlways ? 'show-always' : 'show-hover'}`}>
                                 {renderGrid()}
                             </div>
+                            {isCollisionMode && (
+                                <div className="collision-overlay">
+                                    {collisionShapes.map(shape => (
+                                        <div
+                                            key={shape.id}
+                                            className={`collision-rect ${shape.isSensor ? 'is-sensor' : 'is-solid'}`}
+                                            style={{
+                                                left: shape.x * zoom,
+                                                top: shape.y * zoom,
+                                                width: shape.w * zoom,
+                                                height: shape.h * zoom
+                                            }}
+                                        >
+                                            <span className="rect-dims">{shape.w}x{shape.h}</span>
+                                            <div className="shape-controls">
+                                                <button
+                                                    className={`sensor-toggle ${shape.isSensor ? 'active' : ''}`}
+                                                    onClick={(e) => { e.stopPropagation(); toggleSensor(shape.id); }}
+                                                    title="Toggle Sensor"
+                                                >
+                                                    {shape.isSensor ? 'S' : 'W'}
+                                                </button>
+                                                <button
+                                                    className="delete-shape"
+                                                    onClick={(e) => { e.stopPropagation(); deleteShape(shape.id); }}
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </main>

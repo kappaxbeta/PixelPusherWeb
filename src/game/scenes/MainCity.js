@@ -82,7 +82,7 @@ export class MainCity extends Phaser.Scene {
         // Granular Building Part Library with explicit widths
         const buildingParts = [
             // Roof Top Row
-            { id: 'redRoofEdgeLeftTop', tiles: [2752, 2784, 2816, 2848, 2880, 2912, 2944, 2976, 3008, 3040], width: 1 },
+            { id: 'redRoofEdgeLeftTop', tiles: [2752, 2784, 2816, 2848, 2880, 2912, 2944, 2976, 3008, 3040], width: 1, collisions: [{ "x": 0, "y": 0, "width": 16, "height": 159, "isSensor": false }] },
             { id: 'redRoofEdgeMiddleTop', tiles: [2753, 2754, 2755, 2756, 2757, 2785, 2786, 2787, 2788, 2789, 2817, 2818, 2819, 2820, 2821, 2849, 2850, 2851, 2852, 2853, 2881, 2882, 2883, 2884, 2885, 2913, 2914, 2915, 2916, 2917, 2945, 2946, 2947, 2948, 2949, 2977, 2978, 2979, 2980, 2981, 3009, 3010, 3011, 3012, 3013, 3041, 3042, 3043, 3044, 3045], width: 5 },
             { id: 'redRoofEdgeRightTop', tiles: [2752, 2784, 2816, 2848, 2880, 2912, 2944, 2976, 3008, 3040], flipX: true, width: 1 },
             // Middle Building Row
@@ -90,9 +90,28 @@ export class MainCity extends Phaser.Scene {
             { id: 'redBuildingMiddleEdgeMiddle', tiles: [3105, 3106, 3107, 3108, 3109, 3137, 3138, 3139, 3140, 3141, 3169, 3170, 3171, 3172, 3173], width: 5 },
             { id: 'redBuildingMiddleEdgeRight', tiles: [3104, 3136, 3168], flipX: true, width: 1 },
             // Ground Building Row
-            { id: 'redBuildingGroundEdgeLeft', tiles: [3232, 3264, 3296, 3328], width: 1 },
-            { id: 'redBuildingGroundEdgeMiddle', tiles: [3233, 3234, 3235, 3236, 3237, 3265, 3266, 3267, 3268, 3269, 3297, 3298, 3299, 3300, 3301, 3329, 3330, 3331, 3332, 3333], width: 5 },
-            { id: 'redBuildingGroundEdgeRight', tiles: [3232, 3264, 3296, 3328], flipX: true, width: 1 }
+            {
+                id: 'redBuildingGroundEdgeLeft', tiles: [3232, 3264, 3296, 3328], width: 1, collisions: [
+                    { "x": 0, "y": 0, "width": 17, "height": 65, "isSensor": false }
+                ]
+            },
+            {
+                id: 'redBuildingGroundEdgeMiddle',
+                tiles: [3233, 3234, 3235, 3236, 3237, 3265, 3266, 3267, 3268, 3269, 3297, 3298, 3299, 3300, 3301, 3329, 3330, 3331, 3332, 3333],
+                width: 5,
+                collisions: [
+                    { "x": 0, "y": 0, "width": 18, "height": 64, "isSensor": false },
+                    { "x": 62, "y": 0, "width": 21, "height": 59, "isSensor": false },
+                    { "x": 32, "y": 0, "width": 9, "height": 6, "isSensor": false },
+                    { "x": 16, "y": 0, "width": 43, "height": 21, "isSensor": false },
+                    { x: 16, y: 16, width: 48, height: 48, id: 'main_entrance', isSensor: true }
+                ]
+            },
+            {
+                id: 'redBuildingGroundEdgeRight', tiles: [3232, 3264, 3296, 3328], flipX: true, width: 1, collisions: [
+                    { "x": 0, "y": 0, "width": 17, "height": 65, "isSensor": false }
+                ]
+            }
         ];
 
         // 2D Recipe for a complex building
@@ -103,12 +122,36 @@ export class MainCity extends Phaser.Scene {
             ['redBuildingGroundEdgeLeft', 'redBuildingGroundEdgeMiddle', 'redBuildingGroundEdgeRight']
         ];
 
-        // Create the Building instance (16px tiles, scale 1)
-        this.buildingOne = new Building(this, 0, 0, 'generic-building', redBuildingRecipe, buildingParts, 1);
-        // Create the Building instance (16px tiles, scale 1)
-        this.buildingTwo = new Building(this, 114, 0, 'generic-building', redBuildingRecipe, buildingParts, 1);
-        // Create the Building instance (16px tiles, scale 1)
-        this.buildingThree = new Building(this, 228, 0, 'generic-building', redBuildingRecipe, buildingParts, 1);
+        const collisionConfig = {
+            'main_entrance': {
+                onEnter: (sensor) => {
+                    console.log('--- ENTRANCE TRIGGERED ---', sensor.partId);
+                    // You could emit a custom event or change scene here
+                }
+            }
+        };
+
+        // Create the Building instance (16px tiles, scale 1) with debug enabled
+        this.buildingOne = new Building(this, 0, 0, 'generic-building', redBuildingRecipe, buildingParts, 1, collisionConfig, true);
+        // Create the Building instance (16px tiles, scale 1) with debug enabled
+        this.buildingTwo = new Building(this, 114, 0, 'generic-building', redBuildingRecipe, buildingParts, 1, collisionConfig, true);
+        // Create the Building instance (16px tiles, scale 1) with debug enabled
+        this.buildingThree = new Building(this, 228, 0, 'generic-building', redBuildingRecipe, buildingParts, 1, collisionConfig, true);
+
+        this.buildings = [this.buildingOne, this.buildingTwo, this.buildingThree];
+
+        // Debug Toggle Key
+        this.input.keyboard.on('keydown-G', () => {
+            this.buildings.forEach(b => {
+                if (b && b.list) {
+                    b.list.forEach(child => {
+                        if (child instanceof Phaser.GameObjects.Rectangle) {
+                            child.setVisible(!child.visible);
+                        }
+                    });
+                }
+            });
+        });
 
 
 
@@ -123,9 +166,9 @@ export class MainCity extends Phaser.Scene {
         // Overlaps & Collisions
         console.log('MainCity: Adding overlaps');
         this.physics.add.collider(this.player, this.buildings);
-        this.physics.add.collider(this.player, this.buildingOne); // Add collision with recipe-based building
-        this.physics.add.collider(this.player, this.buildingTwo); // Add collision with recipe-based building
-        this.physics.add.collider(this.player, this.buildingThree); // Add collision with recipe-based building
+        //this.physics.add.collider(this.player, this.buildingOne); // Add collision with recipe-based building
+        //this.physics.add.collider(this.player, this.buildingTwo); // Add collision with recipe-based building
+        //this.physics.add.collider(this.player, this.buildingThree); // Add collision with recipe-based building
 
         this.physics.add.overlap(this.player, this.buildings, (player, building) => {
             this.showInteractionPrompt('Press E to Enter');
@@ -133,11 +176,11 @@ export class MainCity extends Phaser.Scene {
         }, null, this);
 
         this.physics.add.overlap(this.player, this.npcs, (player, npc) => {
-            if (npc.isWaitingForDelivery) {
-                this.showInteractionPrompt('Press E to Deliver');
-                this.activeTrigger = 'npc';
-                this.activeNPC = npc;
-            }
+            //if (npc.isWaitingForDelivery) {
+            this.showInteractionPrompt('Press E to Deliver');
+            this.activeTrigger = 'npc';
+            this.activeNPC = npc;
+            //}
         }, null, this);
         console.log('MainCity: Overlaps added');
 
@@ -174,5 +217,28 @@ export class MainCity extends Phaser.Scene {
 
     update() {
         this.player.update();
+
+        // Y-sorting for all relevant objects
+        const sortableObjects = [this.player, this.buildingOne, this.buildingTwo, this.buildingThree];
+        // Add NPCs if they exist
+        if (this.npcs) {
+            this.npcs.getChildren().forEach(npc => sortableObjects.push(npc));
+        }
+
+        sortableObjects.forEach(obj => {
+            if (!obj) return;
+
+            let sortY = obj.y;
+            if (obj instanceof Building) {
+                // Buildings use their calculated sortYOffset which is based on solid colliders
+                sortY = obj.y + (obj.sortYOffset || obj.totalHeight || 0);
+            } else if (obj instanceof Player || obj instanceof NPC) {
+                // Characters are origin 0.5, 0.5, so bottom is y + half height
+                // They are scaled, so we consider that
+                sortY = obj.y + (obj.displayHeight / 2);
+            }
+
+            obj.setDepth(sortY);
+        });
     }
 }
