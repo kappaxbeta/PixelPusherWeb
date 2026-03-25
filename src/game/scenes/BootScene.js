@@ -16,16 +16,16 @@ export class BootScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        this.progressBar = this.add.graphics();
-        this.progressBox = this.add.graphics();
-        this.progressBox.fillStyle(0x222222, 0.8);
-        this.progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
+        //this.progressBar = this.add.graphics();
+        //this.progressBox = this.add.graphics();
+        //this.progressBox.fillStyle(0x222222, 0.8);
+        //this.progressBox.fillRect(width / 2 - 160, height / 2 - 25, 320, 50);
 
         this.load.on('progress', (value) => {
             console.log('Load Progress: ' + value);
-            progressBar.clear();
-            progressBar.fillStyle(0xffffff, 1);
-            progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
+          //  progressBar.clear();
+          //  progressBar.fillStyle(0xffffff, 1);
+          //  progressBar.fillRect(width / 2 - 150, height / 2 - 15, 300 * value, 30);
         });
 
         this.load.on('filecomplete', (key) => {
@@ -51,8 +51,8 @@ export class BootScene extends Phaser.Scene {
     }
 
     create() {
-        if (this.progressBar) this.progressBar.destroy();
-        if (this.progressBox) this.progressBox.destroy();
+       // if (this.progressBar) this.progressBar.destroy();
+       // if (this.progressBox) this.progressBox.destroy();
         console.log('BootScene: Starting MainCity');
         this.scene.start('MainCity');
     }

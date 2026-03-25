@@ -30,6 +30,35 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         }
         console.log('Player: Constructor finished');
     }
+    create() {
+    const player = this.physics.add.sprite(100, 100, 'player');
+
+    // Animation for walking down (usually the first row)
+    this.anims.create({
+        key: 'walk-down',
+        frames: this.anims.generateFrameNumbers('player', { start: 0, end: 3 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    // Animation for walking left
+    this.anims.create({
+        key: 'walk-left',
+        frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    // Define 'idle' usually as a single frame
+    this.anims.create({
+        key: 'idle-down',
+        frames: [{ key: 'player', frame: 0 }],
+        frameRate: 20
+    });
+
+    // Create cursors for input
+    this.cursors = this.input.keyboard.createCursorKeys();
+}
 
     update() {
         this.setVelocity(0);

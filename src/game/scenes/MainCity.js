@@ -2,11 +2,18 @@ import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
 import { EventBus } from '../EventBus';
-
+import PlayerSprite from '../../assets/spritesheets/character/Premade_Character_18.png';
 export class MainCity extends Phaser.Scene {
     constructor() {
         super('MainCity');
     }
+    preload() {
+    // Replace 32 with the actual width/height of one character frame
+    this.load.spritesheet('player',PlayerSprite, { 
+        frameWidth: 16, 
+        frameHeight: 32 
+    });
+}
 
     create() {
         console.log('MainCity: Starting create');
@@ -74,8 +81,8 @@ export class MainCity extends Phaser.Scene {
         this.npcs = this.physics.add.group();
         const customer1 = new NPC(this, 500, 300, 'player', 'Big G');
         const customer2 = new NPC(this, 200, 400, 'player', 'Lil Smokey');
-        this.npcs.add(customer1);
-        this.npcs.add(customer2);
+        //this.npcs.add(customer1);
+        //this.npcs.add(customer2);
 
         // Overlaps & Collisions
         console.log('MainCity: Adding overlaps');
