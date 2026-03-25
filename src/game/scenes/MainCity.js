@@ -1,92 +1,131 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { NPC } from '../entities/NPC';
+import { Building } from '../entities/Building';
+import { ModularTerrain } from '../entities/ModularTerrain';
 import { EventBus } from '../EventBus';
 import PlayerSprite from '../../assets/spritesheets/character/Premade_Character_18.png';
+import ModularBuildingsSprite from '../../assets/tilesets/5_Floor_Modular_Buildings_16x16.png';
+import CityTerrainSprite from '../../assets/tilesets/2_City_Terrains_16x16.png';
+import GenericBuildingsTileMap from '../../assets/tilesets/4_Generic_Buildings_16x16.png'
 export class MainCity extends Phaser.Scene {
     constructor() {
         super('MainCity');
     }
     preload() {
-    // Replace 32 with the actual width/height of one character frame
-    this.load.spritesheet('player',PlayerSprite, { 
-        frameWidth: 16, 
-        frameHeight: 32 
-    });
-}
+        // Player spritesheet
+        this.load.spritesheet('player', PlayerSprite, {
+            frameWidth: 16,
+            frameHeight: 32
+        });
+
+        // Modular Buildings spritesheet
+        this.load.spritesheet('modular-buildings', ModularBuildingsSprite, {
+            frameWidth: 16,
+            frameHeight: 16
+        });
+        this.load.spritesheet('generic-building', GenericBuildingsTileMap, {
+            frameWidth: 16,
+            frameHeight: 16
+        })
+        // City Terrains tileset (for the background)
+        this.load.image('city-terrain', CityTerrainSprite);
+    }
 
     create() {
         console.log('MainCity: Starting create');
 
-        this.cameras.main.setBackgroundColor('#ff00ff'); // Bright Magenta
+        // Setup Modular Terrain (Bottom Layer)
+        this.terrain = new ModularTerrain(this, 'city-terrain', 16, 100, 100);
 
-        // Debug Marker
-        this.add.rectangle(400, 300, 200, 200, 0xffffff); // Big White Square in center
-        this.add.text(400, 300, 'RENDER OK', { font: '64px Courier', fill: '#000000' }).setOrigin(0.5);
+        // Example Street Section (4x4 tiles)
+        const streetLayout = [
+            [1366, 1367, 1368, 1369],
+            [1425, 1426, 1427, 1428],
+            [1484, 1485, 1486, 1487],
+            [1543, 1544, 1545, 1546]
+        ];
 
-        console.log('MainCity: Creating animations');
-        this.anims.create({
-            key: 'walk-down',
-            frames: this.anims.generateFrameNumbers('player', { start: 0, end: 4 }),
-            frameRate: 10,
-            repeat: -1
-        });
-        this.anims.create({
-            key: 'walk-up',
-            frames: this.anims.generateFrameNumbers('player', { start: 4, end: 7 }),
-            frameRate: 10,
-            repeat: -1
-        });
-        this.anims.create({
-            key: 'walk-left',
-            frames: this.anims.generateFrameNumbers('player', { start: 12, end: 15 }),
-            frameRate: 10,
-            repeat: -1
-        });
-        this.anims.create({
-            key: 'walk-right',
-            frames: this.anims.generateFrameNumbers('player', { start: 8, end: 11 }),
-            frameRate: 10,
-            repeat: -1
-        });
-        this.anims.create({
-            key: 'idle-down',
-            frames: [{ key: 'player', frame: 0 }],
-            frameRate: 10
-        });
+        const carStreetLayout = [
+            [178],
+            [236],
+            [295],
+            [354],
+            [413]
+        ]
+
+        // Fill a large area (e.g., 20x20 segments = 80x80 tiles)
+        for (let y = 0; y < 20; y++) {
+            for (let x = 0; x < 20; x++) {
+                this.terrain.addSegment(x * 4, y * 4, streetLayout);
+            }
+        }
+
+        // Add a primary horizontal street at Y-tile 11 (covers rows 11 to 16)
+        // 116 (11-16) request: carStreetLayout is 5 tiles high.
+        for (let x = 0; x < 80; x++) {
+            this.terrain.addSegment(x, 26, carStreetLayout);
+        }
+
+        this.cameras.main.setBackgroundColor('#000000'); // Black background for city
+
+        const citySize = 100 * 16; // 1600px
+        this.physics.world.setBounds(0, 0, citySize, citySize);
+        this.cameras.main.setBounds(0, 0, citySize, citySize);
 
         console.log('MainCity: Creating player');
         // Setup Player
-        this.player = new Player(this, 100, 100, 'player');
-        this.player.setScale(4);
+        this.player = new Player(this, 200, 400, 'player');
+        this.player.setScale(1);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
-        // Buildings
-        this.buildings = this.physics.add.staticGroup();
-        const buildingPositions = [
-            { x: 300, y: 300, label: 'SHOP', frame: 1 },
-            { x: 600, y: 500, label: 'OFFICE', frame: 5 },
-            { x: 100, y: 500, label: 'HOME', frame: 9 },
+        // Granular Building Part Library with explicit widths
+        const buildingParts = [
+            // Roof Top Row
+            { id: 'redRoofEdgeLeftTop', tiles: [2752, 2784, 2816, 2848, 2880, 2912, 2944, 2976, 3008, 3040], width: 1 },
+            { id: 'redRoofEdgeMiddleTop', tiles: [2753, 2754, 2755, 2756, 2757, 2785, 2786, 2787, 2788, 2789, 2817, 2818, 2819, 2820, 2821, 2849, 2850, 2851, 2852, 2853, 2881, 2882, 2883, 2884, 2885, 2913, 2914, 2915, 2916, 2917, 2945, 2946, 2947, 2948, 2949, 2977, 2978, 2979, 2980, 2981, 3009, 3010, 3011, 3012, 3013, 3041, 3042, 3043, 3044, 3045], width: 5 },
+            { id: 'redRoofEdgeRightTop', tiles: [2752, 2784, 2816, 2848, 2880, 2912, 2944, 2976, 3008, 3040], flipX: true, width: 1 },
+            // Middle Building Row
+            { id: 'redBuildingMiddleEdgeLeft', tiles: [3104, 3136, 3168], width: 1 },
+            { id: 'redBuildingMiddleEdgeMiddle', tiles: [3105, 3106, 3107, 3108, 3109, 3137, 3138, 3139, 3140, 3141, 3169, 3170, 3171, 3172, 3173], width: 5 },
+            { id: 'redBuildingMiddleEdgeRight', tiles: [3104, 3136, 3168], flipX: true, width: 1 },
+            // Ground Building Row
+            { id: 'redBuildingGroundEdgeLeft', tiles: [3232, 3264, 3296, 3328], width: 1 },
+            { id: 'redBuildingGroundEdgeMiddle', tiles: [3233, 3234, 3235, 3236, 3237, 3265, 3266, 3267, 3268, 3269, 3297, 3298, 3299, 3300, 3301, 3329, 3330, 3331, 3332, 3333], width: 5 },
+            { id: 'redBuildingGroundEdgeRight', tiles: [3232, 3264, 3296, 3328], flipX: true, width: 1 }
         ];
 
-        buildingPositions.forEach(pos => {
-            const b = this.add.rectangle(pos.x, pos.y, 64, 64, 0x333333);
-            this.physics.add.existing(b, true);
-            this.buildings.add(b);
-            this.add.text(pos.x, pos.y - 60, pos.label, { font: '14px Courier', fill: '#00ff00' }).setOrigin(0.5);
-            this.add.image(pos.x, pos.y, 'city-buildings', pos.frame).setScale(2);
-        });
+        // 2D Recipe for a complex building
+        const redBuildingRecipe = [
+            ['redRoofEdgeLeftTop', 'redRoofEdgeMiddleTop', 'redRoofEdgeRightTop'],
+            ['redBuildingMiddleEdgeLeft', 'redBuildingMiddleEdgeMiddle', 'redBuildingMiddleEdgeRight'],
+            ['redBuildingMiddleEdgeLeft', 'redBuildingMiddleEdgeMiddle', 'redBuildingMiddleEdgeRight'],
+            ['redBuildingGroundEdgeLeft', 'redBuildingGroundEdgeMiddle', 'redBuildingGroundEdgeRight']
+        ];
+
+        // Create the Building instance (16px tiles, scale 1)
+        this.buildingOne = new Building(this, 0, 0, 'generic-building', redBuildingRecipe, buildingParts, 1);
+        // Create the Building instance (16px tiles, scale 1)
+        this.buildingTwo = new Building(this, 114, 0, 'generic-building', redBuildingRecipe, buildingParts, 1);
+        // Create the Building instance (16px tiles, scale 1)
+        this.buildingThree = new Building(this, 228, 0, 'generic-building', redBuildingRecipe, buildingParts, 1);
+
+
+
 
         // NPCs
         this.npcs = this.physics.add.group();
-        const customer1 = new NPC(this, 500, 300, 'player', 'Big G');
-        const customer2 = new NPC(this, 200, 400, 'player', 'Lil Smokey');
+        const customer1 = new NPC(this, 500, 600, 'player', 'Big G');
+        const customer2 = new NPC(this, 500, 100, 'player', 'Lil Smokey');
         //this.npcs.add(customer1);
         //this.npcs.add(customer2);
 
         // Overlaps & Collisions
         console.log('MainCity: Adding overlaps');
         this.physics.add.collider(this.player, this.buildings);
+        this.physics.add.collider(this.player, this.buildingOne); // Add collision with recipe-based building
+        this.physics.add.collider(this.player, this.buildingTwo); // Add collision with recipe-based building
+        this.physics.add.collider(this.player, this.buildingThree); // Add collision with recipe-based building
 
         this.physics.add.overlap(this.player, this.buildings, (player, building) => {
             this.showInteractionPrompt('Press E to Enter');

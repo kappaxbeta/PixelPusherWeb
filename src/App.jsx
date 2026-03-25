@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, Link } from 'react-router-dom';
 import { PhaserGame } from './game/PhaserGame';
 import { EventBus } from './game/EventBus';
 import { Joystick } from './components/Joystick';
+import ImageNumerateTool from './components/ImageNumerateTool';
 import './App.css';
 
-function App() {
+function GameView() {
   const [money, setMoney] = useState(0);
   const [inventory, setInventory] = useState(10); // Start with 10g
 
@@ -43,7 +45,6 @@ function App() {
         <p style={{ margin: '5px 0', fontSize: '18px' }}>🌿 Stock: {inventory}g</p>
       </div>
 
-      {/* Mobile Controls */}
       <Joystick />
       <button
         style={{
@@ -73,7 +74,31 @@ function App() {
       >
         E
       </button>
+
+      <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 1000 }}>
+        <Link to="/numerate" style={{
+          color: '#00ff00',
+          textDecoration: 'none',
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          padding: '10px 20px',
+          borderRadius: '8px',
+          border: '1px solid #00ff00',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        }}>
+          Numerate Tool
+        </Link>
+      </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<GameView />} />
+      <Route path="/numerate" element={<ImageNumerateTool />} />
+    </Routes>
   );
 }
 

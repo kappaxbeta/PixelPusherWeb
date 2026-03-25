@@ -10,7 +10,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
         this.npcName = name;
         this.isWaitingForDelivery = true;
-        this.setScale(3); // Scale up for visibility
+        this.setScale(1); // Scale up for visibility
 
         // Add name tag
         this.nameTag = scene.add.text(x, y - 40, name, { font: '12px Courier', fill: '#ffffff' }).setOrigin(0.5);
