@@ -8,6 +8,8 @@ export const config = {
   parent: "phaser-container",
   backgroundColor: "#2d2d2d",
   pixelArt: true,
+  antialias: false,
+  roundPixels: true,
   scale: {
     mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
