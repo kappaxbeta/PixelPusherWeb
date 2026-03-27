@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "pretty": "prettier --write ."
   },
   "dependencies": {
     "phaser": "^3.90.0",
@@ -16,6 +17,7 @@
     "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
+    "prettier": "^3.5.3",
     "@eslint/js": "^9.39.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
