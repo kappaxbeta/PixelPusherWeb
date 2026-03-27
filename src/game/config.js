@@ -9,10 +9,8 @@ export const config = {
   backgroundColor: "#2d2d2d",
   pixelArt: true,
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
-    width: 800,
-    height: 600,
   },
   physics: {
     default: "arcade",

@@ -206,7 +206,7 @@ export class InteriorScene extends Phaser.Scene {
       .setScrollFactor(0);
 
     this.interactionPrompt = this.add
-      .text(400, 550, "", {
+      .text(this.scale.width / 2, this.scale.height - 50, "", {
         fontSize: "16px",
         fill: "#ffffff",
         backgroundColor: "#000000",
@@ -216,6 +216,14 @@ export class InteriorScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setVisible(false)
       .setDepth(100);
+
+    // Handle Resize
+    this.scale.on("resize", (gameSize) => {
+      const { width, height } = gameSize;
+      if (this.interactionPrompt) {
+        this.interactionPrompt.setPosition(width / 2, height - 50);
+      }
+    });
 
     this.exitKey = this.input.keyboard.addKey(
       Phaser.Input.Keyboard.KeyCodes.SPACE,
