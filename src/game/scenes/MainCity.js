@@ -637,14 +637,15 @@ export class MainCity extends Phaser.Scene {
     });
 
     // Unfreeze player when React menu closes
-    EventBus.on("close-trade-menu", () => {
+    this.handleCloseTrade = () => {
       this.player.frozen = false;
-    });
+    };
+    EventBus.on("close-trade-menu", this.handleCloseTrade);
 
-    EventBus.on("player-interact-touch", () => {
-      console.log("Touch interact!");
+    this.handleTouchInteract = () => {
       this.events.emit("player-interact");
-    });
+    };
+    EventBus.on("player-interact-touch", this.handleTouchInteract);
 
     this.promptText = this.add
       .text(400, 500, "", {
@@ -654,6 +655,11 @@ export class MainCity extends Phaser.Scene {
       })
       .setOrigin(0.5);
     console.log("MainCity: create finished");
+  }
+
+  shutdown() {
+    EventBus.off("close-trade-menu", this.handleCloseTrade);
+    EventBus.off("player-interact-touch", this.handleTouchInteract);
   }
 
   showInteractionPrompt(msg) {

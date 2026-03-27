@@ -251,26 +251,24 @@ export class InteriorScene extends Phaser.Scene {
           price: this.activePortal.tradeConfig.price,
           amount: this.activePortal.tradeConfig.amount,
         });
-      } else {
-        // EXITS and Manual Portals
-        const isExit =
-          pId.toLowerCase().includes("exit") ||
-          pData.target === "MainCity" ||
-          pData.target === this.returnScene;
-
-        if (isExit || pData.manual) {
-          this.handlePortal(this.activePortal);
-        }
+      } else if (this.activePortal && !this.isNearNPC) {
+        // Any regular portal interaction (Flat doors, etc.)
+        this.handlePortal(this.activePortal);
       }
     };
 
     this.events.on("player-interact", interactionHandler);
-    this.events.on("player-interact-touch", interactionHandler);
+
+    // Listen for global touch interaction events from React UI
+    this.handleTouchInteract = () => {
+      this.events.emit("player-interact");
+    };
+    EventBus.on("player-interact-touch", this.handleTouchInteract);
   }
 
   shutdown() {
     this.events.off("player-interact");
-    this.events.off("player-interact-touch"); // Clean up touch listener too
+    EventBus.off("player-interact-touch", this.handleTouchInteract);
     EventBus.off("close-trade-menu"); // Clean up EventBus listener
   }
 
@@ -397,13 +395,11 @@ export class InteriorScene extends Phaser.Scene {
         const pData = this.activePortal.getData("config");
         const pId = this.activePortal.getData("id") || "";
 
-        // Trigger automatic transition for HALLWAYS (not MainCity or manual exits)
-        const isAutomatic =
-          pData?.target !== "MainCity" &&
-          pData?.target !== this.returnScene &&
-          !pId.toLowerCase().includes("exit") &&
-          !pData?.manual;
-
+        // Trigger automatic transition for HALLWAYS (if we want them automatic)
+        // For now, let's keep everything manual 'E' per user preference, 
+        // EXCEPT if specifically marked automatic or it's a generic "hallway" sensor
+        const isAutomatic = pData?.automatic === true;
+        
         if (isAutomatic) {
           this.handlePortal(this.activePortal);
         } else if (this.isNearNPC) {
@@ -411,14 +407,15 @@ export class InteriorScene extends Phaser.Scene {
           this.interactionPrompt.setVisible(true);
         } else if (
           pId.toLowerCase().includes("exit") ||
-          pData?.target === "MainCity"
+          pData?.target === "MainCity" ||
+          pData?.target === this.returnScene
         ) {
           this.interactionPrompt.setText("Press E to Exit");
           this.interactionPrompt.setVisible(true);
         } else {
-          this.interactionPrompt.setText(
-            `Press E to enter ${pData?.id || "room"}`,
-          );
+          // It's a door or entrance to something else
+          const targetName = pData?.buildingId || pData?.target || "room";
+          this.interactionPrompt.setText(`Press E up to enter ${targetName}`);
           this.interactionPrompt.setVisible(true);
         }
       } else {
