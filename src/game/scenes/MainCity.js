@@ -4,6 +4,7 @@ import { NPC } from "../entities/NPC";
 import { Building } from "../entities/Building";
 import { ModularTerrain } from "../entities/ModularTerrain";
 import { Car } from "../entities/Car";
+import { NPCCar } from "../entities/NPCCar";
 import { EventBus } from "../EventBus";
 import PlayerSprite from "../../assets/spritesheets/character/Premade_Character_18.png";
 import ModularBuildingsSprite from "../../assets/tilesets/5_Floor_Modular_Buildings_16x16.png";
@@ -42,6 +43,12 @@ export class MainCity extends Phaser.Scene {
             frameWidth: 16,
             frameHeight: 16,
         });
+        for (let i = 1; i <= 7; i++) {
+            this.load.spritesheet(`car-type4-${i}`, `src/assets/cars/Car_4_16x16_${i}.png`, {
+                frameWidth: 16,
+                frameHeight: 16,
+            });
+        }
         // City Terrains tileset (for the background)
         this.load.image("city-terrain", CityTerrainSprite);
     }
@@ -316,6 +323,20 @@ export class MainCity extends Phaser.Scene {
             }
         });
 
+        // Setup Traffic
+        this.npcCars = this.physics.add.group();
+        this.spawnTraffic(15);
+
+        this.physics.add.collider(this.npcCars, this.npcCars);
+        this.physics.add.collider(this.player, this.npcCars);
+        this.physics.add.collider(this.blueCar, this.npcCars);
+
+        this.buildings.forEach((b) => {
+            if (b && b.sensors) {
+                this.physics.add.collider(this.npcCars, b.sensors);
+            }
+        });
+
         // Debug Toggle Key
         this.showDebug = true; // Start true if using building debug
         this.input.keyboard.on("keydown-G", () => {
@@ -467,7 +488,7 @@ export class MainCity extends Phaser.Scene {
     }
 
     update(time, delta) {
-        this.player.update();
+        if (this.player) this.player.update();
         if (this.blueCar)
             this.blueCar.update(time, delta, {
                 ...this.player.cursors,
@@ -476,6 +497,10 @@ export class MainCity extends Phaser.Scene {
                 A: this.player.wasd.A,
                 D: this.player.wasd.D,
             });
+
+        if (this.npcCars) {
+            this.npcCars.getChildren().forEach((car) => car.update(time, delta));
+        }
 
         if (this.player.isWalking) {
             if (!this.shakeActive) {
@@ -524,8 +549,12 @@ export class MainCity extends Phaser.Scene {
         const sortableObjects = [
             this.player,
             ...this.buildings,
-            this.blueCar
+            this.blueCar,
         ];
+
+        if (this.npcCars) {
+            this.npcCars.getChildren().forEach((car) => sortableObjects.push(car));
+        }
         // Add NPCs if they exist
         if (this.npcs) {
             this.npcs.getChildren().forEach((npc) => sortableObjects.push(npc));
@@ -546,5 +575,34 @@ export class MainCity extends Phaser.Scene {
 
             obj.setDepth(sortY);
         });
+    }
+
+    spawnTraffic(count) {
+        const cellWidth = 47 * 16;
+        const cellHeight = 37 * 16;
+        const borderY = 10 * 16;
+
+        for (let i = 0; i < count; i++) {
+            const gx = Math.floor(Math.random() * 4);
+            const gy = Math.floor(Math.random() * 4);
+            const type = Math.floor(Math.random() * 7) + 1;
+            const texture = `car-type4-${type}`;
+
+            const isHorizontal = Math.random() > 0.5;
+            let x, y;
+            if (isHorizontal) {
+                x = gx * cellWidth + Math.random() * cellWidth;
+                y = borderY + gy * cellHeight + (Math.random() > 0.5 ? 30 : 35) * 16;
+            } else {
+                x = gx * cellWidth + (Math.random() > 0.5 ? 39 : 44) * 16;
+                y = borderY + gy * cellHeight + Math.random() * cellHeight;
+            }
+
+            const car = new NPCCar(this, x, y, texture);
+            this.npcCars.add(car);
+            // Initial AI direction
+            if (isHorizontal) car.moveDir.set(Math.random() > 0.5 ? 1 : -1, 0);
+            else car.moveDir.set(0, Math.random() > 0.5 ? 1 : -1);
+        }
     }
 }
