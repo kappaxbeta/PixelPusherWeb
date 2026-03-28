@@ -7,6 +7,7 @@ export class Car extends Phaser.GameObjects.Container {
     this.textureKey = texture;
     this.sprites = [];
     this.driver = null;
+    this.status = "idle";
 
     // Car Configuration (Multi-tile indices)
     // Horizontal: 5x3 (15 tiles)
@@ -134,31 +135,47 @@ export class Car extends Phaser.GameObjects.Container {
     let moving = false;
     const dt = delta / 1000;
 
-    if (cursors.left.isDown || (cursors.A && cursors.A.isDown)) {
-      this.velocity.x -= this.acceleration * dt;
-      this.currentDir = "left";
-      moving = true;
-    } else if (cursors.right.isDown || (cursors.D && cursors.D.isDown)) {
-      this.velocity.x += this.acceleration * dt;
-      this.currentDir = "right";
+    let ax = 0;
+    let ay = 0;
+
+    // Keyboard
+    if (cursors.left.isDown || (cursors.A && cursors.A.isDown)) ax = -1;
+    else if (cursors.right.isDown || (cursors.D && cursors.D.isDown)) ax = 1;
+
+    if (cursors.up.isDown || (cursors.W && cursors.W.isDown)) ay = -1;
+    else if (cursors.down.isDown || (cursors.S && cursors.S.isDown)) ay = 1;
+
+    // Joystick
+    if (
+      cursors.joystick &&
+      (Math.abs(cursors.joystick.x) > 0.1 || Math.abs(cursors.joystick.y) > 0.1)
+    ) {
+      ax = cursors.joystick.x;
+      ay = cursors.joystick.y;
+    }
+
+    if (ax !== 0) {
+      this.velocity.x += ax * this.acceleration * dt;
       moving = true;
     } else {
       this.applyDrag("x", dt);
     }
 
-    if (cursors.up.isDown || (cursors.W && cursors.W.isDown)) {
-      this.velocity.y -= this.acceleration * dt;
-      this.currentDir = "up";
-      moving = true;
-    } else if (cursors.down.isDown || (cursors.S && cursors.S.isDown)) {
-      this.velocity.y += this.acceleration * dt;
-      this.currentDir = "down";
+    if (ay !== 0) {
+      this.velocity.y += ay * this.acceleration * dt;
       moving = true;
     } else {
       this.applyDrag("y", dt);
     }
 
-    // Clip velocity
+    if (moving) {
+      if (Math.abs(ax) >= Math.abs(ay)) {
+        this.currentDir = ax > 0 ? "right" : "left";
+      } else {
+        this.currentDir = ay > 0 ? "down" : "up";
+      }
+    }
+
     this.velocity.limit(this.maxSpeed);
     this.body.setVelocity(this.velocity.x, this.velocity.y);
     this.isMoving = moving;
@@ -226,13 +243,15 @@ export class Car extends Phaser.GameObjects.Container {
     if (!this.driver) return;
     this.driver.setVisible(true);
     if (this.driver.body) {
+      this.status = "exiting"; // Small cooldown
       this.driver.body.setEnable(true);
       this.driver.frozen = false;
-      this.driver.body.reset(this.x + 40, this.y);
+      this.driver.body.reset(this.x + 80, this.y);
     }
-    this.driver.setPosition(this.x + 40, this.y);
+    this.driver.setPosition(this.x + 80, this.y);
     this.driver = null;
     this.body.setVelocity(0, 0);
     this.velocity.set(0, 0);
+    setTimeout(() => (this.status = "idle"), 500); // 500ms exit cooldown
   }
 }

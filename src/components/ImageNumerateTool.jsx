@@ -8,7 +8,9 @@ import "./ImageNumerateTool.css";
 //import defaultImage from "../assets/tilesets/4_Generic_Buildings_16x16.png";
 //import defaultImage from '../assets/spritesheets/character/Premade_Character_18.png';
 //import defaultImage from '../assets/tilesets/2_City_Terrains_16x16.png'
-import defaultImage from "../assets/cars/Car_4_16x16_7.png"
+//import defaultImage from "../assets/cars/Car_4_16x16_7.png"
+import defaultImage from "../assets/interior/builder/Room_Builder_16x16.png"
+
 
 const ImageNumerateTool = () => {
     const [imageSrc, setImageSrc] = useState(defaultImage);
@@ -178,7 +180,7 @@ const ImageNumerateTool = () => {
         navigator.clipboard.writeText(dataString).then(() => {
             setCopiedIndex(
                 offsetX > 0 || offsetY > 0
-                    ? "Relative Collision Data Copied"
+                    ? "Relative Collisioxn Data Copied"
                     : "Collision Data Copied",
             );
             setTimeout(() => setCopiedIndex(null), 2000);
@@ -237,7 +239,7 @@ const ImageNumerateTool = () => {
                 : -1;
 
         // Cap tiling to prevent browser hang on massive images with tiny tiles
-        const safeTotal = Math.min(totalTiles, 5000);
+        const safeTotal = totalTiles // Math.min(totalTiles, 5000);
 
         for (let i = 0; i < safeTotal; i++) {
             const r = Math.floor(i / cols);

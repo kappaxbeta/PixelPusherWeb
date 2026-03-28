@@ -192,91 +192,14 @@ export class MainCity extends Phaser.Scene {
             },
         };
 
-        // Create the Building instance (16px tiles, scale 1) with debug enabled
-        this.buildingOne = new Building(
-            this,
-            0,
-            130,
-            "generic-building",
-            redBuildingRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
-        // Create the Building instance (16px tiles, scale 1) with debug enabled
-        this.buildingTwo = new Building(
-            this,
-            114,
-            130,
-            "generic-building",
-            redBuildingRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
-        // Create the Building instance (16px tiles, scale 1) with debug enabled
-        this.buildingThree = new Building(
-            this,
-            228,
-            130,
-            "generic-building",
-            redBuildingRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
-
-        this.gym = new Building(
-            this,
-            342,
-            292,
-            "modular-buildings",
-            gymRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
-
-        this.yellowBuilding = new Building(
-            this,
-            880,
-            262,
-            "generic-building",
-            YellowBuildingRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
-
-        // Create the Building instance (16px tiles, scale 1) with debug enabled
-        this.buildingFive = new Building(
-            this,
-            975,
-            130,
-            "generic-building",
-            redBuildingRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
-
-        this.buildingSix = new Building(
-            this,
-            1086,
-            260,
-            "generic-building",
-            BlueBuildingRecipe,
-            buildingParts,
-            1,
-            collisionConfig,
-            true,
-        );
+        // Create Buildings (debug flag removed, follows scene default)
+        this.buildingOne = new Building(this, 0, 130, "generic-building", redBuildingRecipe, buildingParts, 1, collisionConfig);
+        this.buildingTwo = new Building(this, 114, 130, "generic-building", redBuildingRecipe, buildingParts, 1, collisionConfig);
+        this.buildingThree = new Building(this, 228, 130, "generic-building", redBuildingRecipe, buildingParts, 1, collisionConfig);
+        this.gym = new Building(this, 342, 292, "modular-buildings", gymRecipe, buildingParts, 1, collisionConfig);
+        this.yellowBuilding = new Building(this, 880, 262, "generic-building", YellowBuildingRecipe, buildingParts, 1, collisionConfig);
+        this.buildingFive = new Building(this, 975, 130, "generic-building", redBuildingRecipe, buildingParts, 1, collisionConfig);
+        this.buildingSix = new Building(this, 1086, 260, "generic-building", BlueBuildingRecipe, buildingParts, 1, collisionConfig);
 
         this.buildings = [
             this.buildingOne,
@@ -287,6 +210,7 @@ export class MainCity extends Phaser.Scene {
             this.buildingFive,
             this.buildingSix,
         ];
+        this.setStaticDepths();
 
         // Create Blue Car
         this.blueCar = new Car(
@@ -324,7 +248,7 @@ export class MainCity extends Phaser.Scene {
         });
 
         // Debug Toggle Key
-        this.showDebug = true; // Start true if using building debug
+        this.showDebug = false; // Default false
         this.input.keyboard.on("keydown-G", () => {
             this.showDebug = !this.showDebug;
             this.buildings.forEach((b) => {
@@ -345,6 +269,7 @@ export class MainCity extends Phaser.Scene {
         this.events.on("building-move-end", () => {
             if (this.player) this.player.frozen = false;
             this.movingBuilding = null;
+            this.setStaticDepths();
         });
 
         this.input.on("pointerdown", () => {
@@ -394,6 +319,10 @@ export class MainCity extends Phaser.Scene {
         console.log("MainCity: Overlaps added");
 
         this.events.on("player-interact", () => {
+            const now = this.time.now;
+            if (this.lastInteract && now - this.lastInteract < 500) return;
+            this.lastInteract = now;
+
             // Priority 1: Toggle Car
             if (this.blueCar.driver) {
                 this.blueCar.exit();
@@ -406,7 +335,7 @@ export class MainCity extends Phaser.Scene {
                     this.blueCar.x,
                     this.blueCar.y,
                 );
-                if (dist < 60) {
+                if (dist < 100 && this.blueCar.status !== "exiting") {
                     this.blueCar.enter(this.player);
                     this.cameras.main.startFollow(this.blueCar, true, 0.1, 0.1);
                     return;
@@ -468,11 +397,7 @@ export class MainCity extends Phaser.Scene {
 
     showInteractionPrompt(msg) {
         this.promptText.setText(msg);
-        this.time.delayedCall(100, () => {
-            this.promptText.setText("");
-            this.activeTrigger = null;
-            this.activeNPC = null;
-        });
+        this.lastTriggerTime = this.time.now;
     }
 
     applySmoothShake() {
@@ -481,20 +406,28 @@ export class MainCity extends Phaser.Scene {
         const targetX = (Math.random() - 0.5) * 50; // +/- 25px
         const targetY = (Math.random() - 0.5) * 50; // +/- 25px
 
-        this.shakeTween = this.tweens.add({
-            targets: this.cameras.main.followOffset,
-            x: targetX,
-            y: targetY,
-            duration: 300,
-            ease: "Sine.easeInOut",
-            onComplete: () => {
-                this.applySmoothShake();
-            },
-        });
+        /* this.shakeTween = this.tweens.add({
+             targets: this.cameras.main.followOffset,
+             x: targetX,
+             y: targetY,
+             duration: 300,
+             ease: "Sine.easeInOut",
+             onComplete: () => {
+                 this.applySmoothShake();
+             },
+         });*/
     }
 
     update(time, delta) {
-        if (this.player) this.player.update();
+        if (this.player) {
+            this.player.update();
+            // Clear interaction if not refreshed in 100ms
+            if (this.time.now - (this.lastTriggerTime || 0) > 100) {
+                this.activeTrigger = null;
+                this.activeNPC = null;
+                if (this.promptText) this.promptText.setText("");
+            }
+        }
         if (this.blueCar)
             this.blueCar.update(time, delta, {
                 ...this.player.cursors,
@@ -502,10 +435,32 @@ export class MainCity extends Phaser.Scene {
                 S: this.player.wasd.S,
                 A: this.player.wasd.A,
                 D: this.player.wasd.D,
+                joystick: this.player.joystickInput,
             });
 
+        // Optimization: Distance-based updates
+        const activeRange = 1500;
         if (this.npcCars) {
-            this.npcCars.getChildren().forEach((car) => car.update(time, delta));
+            this.npcCars.getChildren().forEach((car) => {
+                const dist = Phaser.Math.Distance.Between(
+                    this.player.x,
+                    this.player.y,
+                    car.x,
+                    car.y,
+                );
+                if (dist < activeRange) car.update(time, delta);
+            });
+        }
+        if (this.npcs) {
+            this.npcs.getChildren().forEach((npc) => {
+                const dist = Phaser.Math.Distance.Between(
+                    this.player.x,
+                    this.player.y,
+                    npc.x,
+                    npc.y,
+                );
+                if (dist < activeRange) npc.update(time, delta);
+            });
         }
 
         if (this.player.isWalking) {
@@ -552,33 +507,30 @@ export class MainCity extends Phaser.Scene {
         }
 
         // Y-sorting for all relevant objects
-        const sortableObjects = [
-            this.player,
-            ...this.buildings,
-            this.blueCar,
-        ];
-
-        if (this.npcCars) {
-            this.npcCars.getChildren().forEach((car) => sortableObjects.push(car));
-        }
-        // Add NPCs if they exist
+        // Optimization: Only sort active/visible objects
+        const sortableObjects = [this.player, this.blueCar];
         if (this.npcs) {
-            this.npcs.getChildren().forEach((npc) => sortableObjects.push(npc));
+            this.npcs.getChildren().forEach((npc) => {
+                if (this.cameras.main.worldView.contains(npc.x, npc.y))
+                    sortableObjects.push(npc);
+            });
+        }
+        if (this.npcCars) {
+            this.npcCars.getChildren().forEach((car) => {
+                if (this.cameras.main.worldView.contains(car.x, car.y))
+                    sortableObjects.push(car);
+            });
         }
 
         sortableObjects.forEach((obj) => {
             if (!obj) return;
 
             let sortY = obj.y;
-            if (obj instanceof Building) {
-                // Buildings use their calculated sortYOffset which is based on solid colliders
-                sortY = obj.y + (obj.sortYOffset || obj.totalHeight || 0);
-            } else if (obj instanceof Player || obj instanceof NPC) {
-                // Characters are origin 0.5, 0.5, so bottom is y + half height
-                // They are scaled, so we consider that
+            if (obj instanceof Player || obj instanceof NPC) {
                 sortY = obj.y + obj.displayHeight / 2;
+            } else if (obj instanceof Car) {
+                sortY = obj.y + 32;
             }
-
             obj.setDepth(sortY);
         });
     }
@@ -610,5 +562,14 @@ export class MainCity extends Phaser.Scene {
             if (isHorizontal) car.moveDir.set(Math.random() > 0.5 ? 1 : -1, 0);
             else car.moveDir.set(0, Math.random() > 0.5 ? 1 : -1);
         }
+    }
+
+    setStaticDepths() {
+        this.buildings.forEach((b) => {
+            if (b) {
+                const sortY = b.y + (b.sortYOffset || b.totalHeight || 0);
+                b.setDepth(sortY);
+            }
+        });
     }
 }
