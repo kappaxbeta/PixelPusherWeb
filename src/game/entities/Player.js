@@ -86,6 +86,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   update() {
+    // Interaction (Check before state-guard)
+    if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
+      this.scene.events.emit("player-interact");
+    }
+
     this.isWalking = false;
     if (this.frozen) {
       this.setVelocity(0);
@@ -137,11 +142,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       }
     } else {
       this.play(`idle-${this.lastDirection}`, true);
-    }
-
-    // Interaction
-    if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
-      this.scene.events.emit("player-interact");
     }
   }
 }

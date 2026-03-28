@@ -3,11 +3,14 @@ import { Player } from "../entities/Player";
 import { NPC } from "../entities/NPC";
 import { Building } from "../entities/Building";
 import { ModularTerrain } from "../entities/ModularTerrain";
+import { Car } from "../entities/Car";
 import { EventBus } from "../EventBus";
 import PlayerSprite from "../../assets/spritesheets/character/Premade_Character_18.png";
 import ModularBuildingsSprite from "../../assets/tilesets/5_Floor_Modular_Buildings_16x16.png";
 import CityTerrainSprite from "../../assets/tilesets/2_City_Terrains_16x16.png";
 import GenericBuildingsTileMap from "../../assets/tilesets/4_Generic_Buildings_16x16.png";
+import BlueCar from "../../assets/cars/Car_4_16x16_7.png";
+
 import interiorConfigs from "../configs/interior";
 import { buildingsparts, gymParts } from "../configs/buildings";
 import { generateCityGrid, TStyle } from "../utils/cityGenerator";
@@ -32,6 +35,10 @@ export class MainCity extends Phaser.Scene {
             frameHeight: 16,
         });
         this.load.spritesheet("generic-building", GenericBuildingsTileMap, {
+            frameWidth: 16,
+            frameHeight: 16,
+        });
+        this.load.spritesheet("car-blue", BlueCar, {
             frameWidth: 16,
             frameHeight: 16,
         });
@@ -271,8 +278,43 @@ export class MainCity extends Phaser.Scene {
             this.gym,
             this.yellowBuilding,
             this.buildingFive,
-            this.buildingSix
+            this.buildingSix,
         ];
+
+        // Create Blue Car
+        this.blueCar = new Car(
+            this,
+            this.spawnPos.x + 100,
+            this.spawnPos.y,
+            "car-blue",
+        );
+        this.physics.add.collider(this.player, this.blueCar);
+
+        // Add colliders between car and buildings
+        this.buildings.forEach((b) => {
+            if (b && b.sensors) {
+                this.physics.add.collider(this.blueCar, b.sensors);
+            }
+        });
+
+        // Interaction for entering/exiting car
+        this.input.keyboard.on("keydown-E", () => {
+            if (this.blueCar.driver) {
+                this.blueCar.exit();
+                this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+            } else {
+                const dist = Phaser.Math.Distance.Between(
+                    this.player.x,
+                    this.player.y,
+                    this.blueCar.x,
+                    this.blueCar.y,
+                );
+                if (dist < 60) {
+                    this.blueCar.enter(this.player);
+                    this.cameras.main.startFollow(this.blueCar, true, 0.1, 0.1);
+                }
+            }
+        });
 
         // Debug Toggle Key
         this.showDebug = true; // Start true if using building debug
@@ -426,6 +468,14 @@ export class MainCity extends Phaser.Scene {
 
     update(time, delta) {
         this.player.update();
+        if (this.blueCar)
+            this.blueCar.update(time, delta, {
+                ...this.player.cursors,
+                W: this.player.wasd.W,
+                S: this.player.wasd.S,
+                A: this.player.wasd.A,
+                D: this.player.wasd.D,
+            });
 
         if (this.player.isWalking) {
             if (!this.shakeActive) {
@@ -473,7 +523,8 @@ export class MainCity extends Phaser.Scene {
         // Y-sorting for all relevant objects
         const sortableObjects = [
             this.player,
-            ...this.buildings
+            ...this.buildings,
+            this.blueCar
         ];
         // Add NPCs if they exist
         if (this.npcs) {
