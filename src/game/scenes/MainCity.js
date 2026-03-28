@@ -1,4 +1,4 @@
-import Phaser from "phaser";
+import Phaser, { Vector2 } from "phaser";
 import { Player } from "../entities/Player";
 import { NPC } from "../entities/NPC";
 import { Building } from "../entities/Building";
@@ -10,6 +10,7 @@ import CityTerrainSprite from "../../assets/tilesets/2_City_Terrains_16x16.png";
 import GenericBuildingsTileMap from "../../assets/tilesets/4_Generic_Buildings_16x16.png";
 import interiorConfigs from "../configs/interior";
 import { buildingsparts, gymParts } from "../configs/buildings";
+import { generateCityGrid } from "../utils/cityGenerator";
 export class MainCity extends Phaser.Scene {
     constructor() {
         super("MainCity");
@@ -43,35 +44,16 @@ export class MainCity extends Phaser.Scene {
 
         // Define Interior Configurations (imported from config file)
 
-        // Setup Modular Terrain (Bottom Layer)
-        this.terrain = new ModularTerrain(this, "city-terrain", 16, 100, 100);
+        // Increase map size to 1000x1000 tiles
+        const mapSizeTiles = 1000;
+        this.terrain = new ModularTerrain(this, "city-terrain", 16, mapSizeTiles, mapSizeTiles);
 
-        // Example Street Section (4x4 tiles)
-        const streetLayout = [
-            [1366, 1367, 1368, 1369],
-            [1425, 1426, 1427, 1428],
-            [1484, 1485, 1486, 1487],
-            [1543, 1544, 1545, 1546],
-        ];
-
-        const carStreetLayout = [[178], [236], [295], [354], [413]];
-
-        // Fill a large area (e.g., 20x20 segments = 80x80 tiles)
-        for (let y = 0; y < 20; y++) {
-            for (let x = 0; x < 20; x++) {
-                this.terrain.addSegment(x * 4, y * 4, streetLayout);
-            }
-        }
-
-        // Add a primary horizontal street at Y-tile 11 (covers rows 11 to 16)
-        // 116 (11-16) request: carStreetLayout is 5 tiles high.
-        for (let x = 0; x < 80; x++) {
-            this.terrain.addSegment(x, 26, carStreetLayout);
-        }
+        // Generate City Grid using modular utility
+        generateCityGrid(this.terrain, 50);
 
         this.cameras.main.setBackgroundColor("#000000"); // Black background for city
 
-        const citySize = 100 * 16; // 1600px
+        const citySize = 1000 * 16; // 16000px
         this.physics.world.setBounds(0, 0, citySize, citySize);
         this.cameras.main.setBounds(0, 0, citySize, citySize);
 
@@ -245,7 +227,7 @@ export class MainCity extends Phaser.Scene {
         });
 
         // NPCs
-        this.npcs = this.physics.add.staticGroup();
+        this.npcs = this.physics.add.group();
         const customer1 = new NPC(this, 500, 600, "player", "Big G");
         const customer2 = new NPC(this, 500, 100, "player", "Lil Smokey");
         this.npcs.add(customer1);
@@ -254,6 +236,8 @@ export class MainCity extends Phaser.Scene {
         // Overlaps & Collisions
         console.log("MainCity: Adding overlaps");
         this.physics.add.collider(this.player, this.buildings);
+        this.physics.add.collider(this.npcs, this.buildings);
+        this.physics.add.collider(this.npcs, this.npcs); // NPCs collide with each other
 
         this.physics.add.overlap(
             this.player,
@@ -288,6 +272,7 @@ export class MainCity extends Phaser.Scene {
             } else if (this.activeTrigger === "npc" && this.activeNPC) {
                 // Emit event to React TradeDialog
                 this.player.frozen = true;
+                this.activeNPC.frozen = true;
                 EventBus.emit("open-trade", {
                     npcName: this.activeNPC.npcName,
                     prompt: this.activeNPC.tradeConfig.prompt,
@@ -300,6 +285,7 @@ export class MainCity extends Phaser.Scene {
         // Unfreeze player when React menu closes
         this.handleCloseTrade = () => {
             this.player.frozen = false;
+            if (this.activeNPC) this.activeNPC.frozen = false;
         };
         EventBus.on("close-trade-menu", this.handleCloseTrade);
 
@@ -340,8 +326,54 @@ export class MainCity extends Phaser.Scene {
         });
     }
 
-    update() {
+    applySmoothShake() {
+        if (!this.shakeActive) return;
+
+        const targetX = (Math.random() - 0.5) * 50; // +/- 25px
+        const targetY = (Math.random() - 0.5) * 50; // +/- 25px
+
+        this.shakeTween = this.tweens.add({
+            targets: this.cameras.main.followOffset,
+            x: targetX,
+            y: targetY,
+            duration: 300,
+            ease: "Sine.easeInOut",
+            onComplete: () => {
+                this.applySmoothShake();
+            },
+        });
+    }
+
+    update(time, delta) {
         this.player.update();
+
+        if (this.player.isWalking) {
+            if (!this.shakeActive) {
+                this.shakeActive = true;
+                this.applySmoothShake();
+            }
+        } else {
+            this.shakeActive = false;
+            if (this.shakeTween) {
+                this.shakeTween.stop();
+                this.shakeTween = null;
+            }
+            // Return to center smoothly
+            if (this.cameras.main.followOffset.x !== 0 || this.cameras.main.followOffset.y !== 0) {
+                this.tweens.add({
+                    targets: this.cameras.main.followOffset,
+                    x: 0,
+                    y: 0,
+                    duration: 300,
+                    ease: "Cubic.easeOut",
+                });
+            }
+        }
+
+        // Update NPCs
+        if (this.npcs) {
+            this.npcs.getChildren().forEach((npc) => npc.update(time, delta));
+        }
 
         // Y-sorting for all relevant objects
         const sortableObjects = [

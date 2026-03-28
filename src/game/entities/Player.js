@@ -21,6 +21,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Joystick Input
     this.joystickInput = { x: 0, y: 0 };
+    this.isWalking = false;
     if (EventBus) {
       EventBus.on("joystick-move", (data) => {
         this.joystickInput = data;
@@ -81,6 +82,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   update() {
+    this.isWalking = false;
     if (this.frozen) {
       this.setVelocity(0);
       this.stop();
@@ -108,6 +110,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     if (vx !== 0 || vy !== 0) {
+      this.isWalking = true;
       this.setVelocity(vx * this.speed, vy * this.speed);
       this.body.velocity.normalize().scale(this.speed);
 

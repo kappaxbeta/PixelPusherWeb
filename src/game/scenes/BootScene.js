@@ -74,6 +74,35 @@ export class BootScene extends Phaser.Scene {
     // if (this.progressBar) this.progressBar.destroy();
     // if (this.progressBox) this.progressBox.destroy();
     console.log("BootScene: Starting MainCity");
+    this.createAnimations();
     this.scene.start("MainCity");
+  }
+
+  createAnimations() {
+    const anims = this.anims;
+    const animList = [
+      { key: "walk-down", start: 130, end: 135 },
+      { key: "walk-up", start: 118, end: 123 },
+      { key: "walk-left", start: 124, end: 128 },
+      { key: "walk-right", start: 112, end: 117 },
+      { key: "idle-down", start: 74, end: 79 },
+      { key: "idle-up", start: 62, end: 67 },
+      { key: "idle-right", start: 56, end: 61 },
+      { key: "idle-left", start: 68, end: 73 },
+    ];
+
+    animList.forEach((anim) => {
+      if (!anims.exists(anim.key)) {
+        anims.create({
+          key: anim.key,
+          frames: anims.generateFrameNumbers("player", {
+            start: anim.start,
+            end: anim.end,
+          }),
+          frameRate: 5,
+          repeat: -1,
+        });
+      }
+    });
   }
 }
