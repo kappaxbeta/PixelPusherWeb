@@ -10,7 +10,7 @@ import CityTerrainSprite from "../../assets/tilesets/2_City_Terrains_16x16.png";
 import GenericBuildingsTileMap from "../../assets/tilesets/4_Generic_Buildings_16x16.png";
 import interiorConfigs from "../configs/interior";
 import { buildingsparts, gymParts } from "../configs/buildings";
-import { generateCityGrid } from "../utils/cityGenerator";
+import { generateCityGrid, TStyle } from "../utils/cityGenerator";
 export class MainCity extends Phaser.Scene {
     constructor() {
         super("MainCity");
@@ -48,8 +48,16 @@ export class MainCity extends Phaser.Scene {
         const mapSizeTiles = 1000;
         this.terrain = new ModularTerrain(this, "city-terrain", 16, mapSizeTiles, mapSizeTiles);
 
+        // Define modular city configuration grid
+        const cityConfig = [
+            [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
+            [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
+            [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
+            [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK]
+        ];
+
         // Generate City Grid using modular utility
-        generateCityGrid(this.terrain, 50);
+        generateCityGrid(this.terrain, cityConfig);
 
         this.cameras.main.setBackgroundColor("#000000"); // Black background for city
 

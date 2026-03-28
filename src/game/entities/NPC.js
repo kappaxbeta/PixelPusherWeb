@@ -74,8 +74,9 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
   handleAnimations() {
     const vx = this.body.velocity.x;
     const vy = this.body.velocity.y;
+    const threshold = 1;
 
-    if (vx !== 0 || vy !== 0) {
+    if (Math.abs(vx) > threshold || Math.abs(vy) > threshold) {
       if (Math.abs(vx) > Math.abs(vy)) {
         if (vx > 0) {
           this.play("walk-right", true);
