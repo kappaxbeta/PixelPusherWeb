@@ -7,6 +7,8 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
 
     scene.add.existing(this);
     scene.physics.add.existing(this); // Dynamic body
+    this.body.setSize(16, 8);
+    this.body.setOffset(0, 24);
     this.setCollideWorldBounds(true);
 
     this.npcName = name;
@@ -59,7 +61,10 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
         // Pick random direction
         const angle = Phaser.Math.Between(0, 360);
         const rad = Phaser.Math.DegToRad(angle);
-        this.setVelocity(Math.cos(rad) * this.speed, Math.sin(rad) * this.speed);
+        this.setVelocity(
+          Math.cos(rad) * this.speed,
+          Math.sin(rad) * this.speed,
+        );
       } else {
         this.state = "IDLE";
         this.stateTimer = Phaser.Math.Between(1000, 3000);

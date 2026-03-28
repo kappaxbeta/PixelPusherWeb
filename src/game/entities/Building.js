@@ -31,6 +31,8 @@ export class Building extends Phaser.GameObjects.Container {
     this.collisionConfig = collisionConfig;
     this.debug = debug;
     this.sensors = scene.add.group();
+    this.debugShapes = []; // Track debug shapes for toggling
+    this.isMovingMode = false; // Advanced MOVE state
     this.sortYOffset = 0; // Offset from building Y for depth sorting
 
     this.build();
@@ -160,6 +162,7 @@ export class Building extends Phaser.GameObjects.Container {
       );
       debugRect.setStrokeStyle(2, dr.isSensor ? 0x0000ff : 0xff0000);
       this.add(debugRect);
+      if (this.debug) this.debugShapes.push(debugRect);
     });
 
     this.totalWidth = maxWidth;
@@ -167,5 +170,123 @@ export class Building extends Phaser.GameObjects.Container {
 
     // Use max solid collision bottom as the sort point, or default to building bottom
     this.sortYOffset = maxColBottomY > 0 ? maxColBottomY : this.totalHeight;
+
+    if (this.debug) {
+      this.setupDebug();
+    }
+  }
+
+  toggleDebugVisibility(visible) {
+    this.debugShapes.forEach((shape) => {
+      if (shape && shape.setVisible) {
+        shape.setVisible(visible);
+      }
+    });
+  }
+
+  setupDebug() {
+    // 1. Draw 16x16 grid overlay
+    const grid = this.scene.add.grid(
+      this.totalWidth / 2,
+      this.totalHeight / 2,
+      this.totalWidth,
+      this.totalHeight,
+      16,
+      16,
+      0,
+      0,
+      0x00ff00,
+      0.1,
+    );
+    grid.setOutlineStyle(0x00ff00, 0.2);
+    this.add(grid);
+    this.debugShapes.push(grid);
+
+    const handleYPos = this.totalHeight + 4;
+
+    // 2. Add Advanced Drag & WASD Move Handle at bottom
+    const advancedHandle = this.scene.add.rectangle(
+      0,
+      handleYPos,
+      100,
+      16,
+      0xff00ff,
+      0.8,
+    );
+    advancedHandle.setOrigin(0);
+    advancedHandle.setInteractive({ useHandCursor: true, draggable: true });
+    const advancedText = this.scene.add.text(2, handleYPos + 2, "DRAG / WASD", {
+      fontSize: "10px",
+      fill: "#000000",
+      fontStyle: "bold",
+    });
+    this.add([advancedHandle, advancedText]);
+    this.debugShapes.push(advancedHandle, advancedText);
+
+    advancedHandle.on("pointerdown", (pointer) => {
+      if (!this.isMovingMode) {
+        this.toggleMoveMode();
+      }
+      pointer.event.stopPropagation();
+    });
+
+    advancedHandle.on("drag", (pointer, dragX, dragY) => {
+      // dragX/Y are local to container, but let's use world for precision snapping
+      const snapX = Math.round(pointer.worldX / 16) * 16;
+      const snapY = Math.round(pointer.worldY / 16) * 16;
+
+      // Calculate shift from handle relative top-left to building origin
+      const dx = snapX - 50 - this.x; // Adjusted for 100-width handle centered-ish
+      const dy = snapY - (handleYPos + 8) - this.y;
+
+      if (dx !== 0 || dy !== 0) {
+        this.moveBuilding(dx, dy);
+      }
+    });
+
+    advancedHandle.on("dragstart", () => {
+      if (!this.isMovingMode) this.toggleMoveMode();
+    });
+
+    advancedHandle.on("dragend", () => {
+      this.copyPosition();
+    });
+  }
+
+  toggleMoveMode() {
+    this.isMovingMode = !this.isMovingMode;
+    if (this.isMovingMode) {
+      this.setAlpha(0.6);
+      this.scene.events.emit("building-move-start", this);
+    } else {
+      this.setAlpha(1.0);
+      this.scene.events.emit("building-move-end", this);
+      this.copyPosition();
+    }
+  }
+
+  copyPosition() {
+    const posStr = `x: ${Math.round(this.x)}, y: ${Math.round(this.y)}`;
+    navigator.clipboard.writeText(posStr).then(() => {
+      console.log(`Copied building position: ${posStr}`);
+    });
+  }
+
+  moveBuilding(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+
+    // Must move all physics sensors too since they are global zones
+    this.sensors.getChildren().forEach((sensor) => {
+      const newX = sensor.x + dx;
+      const newY = sensor.y + dy;
+      sensor.setPosition(newX, newY);
+      if (sensor.body) {
+        sensor.body.reset(newX, newY);
+      }
+    });
+
+    // Also update depth
+    this.setDepth(this.y + (this.sortYOffset || this.totalHeight || 0));
   }
 }

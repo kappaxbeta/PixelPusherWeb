@@ -17,7 +17,7 @@ export class MainCity extends Phaser.Scene {
     }
 
     init(data) {
-        this.spawnPos = data?.spawnPos || { x: 400, y: 400 };
+        this.spawnPos = data?.spawnPos || { x: 400, y: 500 };
     }
     preload() {
         // Player spritesheet
@@ -46,14 +46,20 @@ export class MainCity extends Phaser.Scene {
 
         // Increase map size to 1000x1000 tiles
         const mapSizeTiles = 1000;
-        this.terrain = new ModularTerrain(this, "city-terrain", 16, mapSizeTiles, mapSizeTiles);
+        this.terrain = new ModularTerrain(
+            this,
+            "city-terrain",
+            16,
+            mapSizeTiles,
+            mapSizeTiles,
+        );
 
         // Define modular city configuration grid
         const cityConfig = [
             [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
             [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
             [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
-            [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK]
+            [TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK, TStyle.BLOCK],
         ];
 
         // Generate City Grid using modular utility
@@ -88,9 +94,8 @@ export class MainCity extends Phaser.Scene {
         this.cameras.main.roundPixels = true;
         this.cameras.main.fadeIn(500, 0, 0, 0);
 
-
         // Granular Building Part Library with explicit widths
-        const buildingParts = buildingsparts
+        const buildingParts = buildingsparts;
 
         // 2D Recipe for a complex building
         const redBuildingRecipe = [
@@ -110,6 +115,14 @@ export class MainCity extends Phaser.Scene {
                 "redBuildingGroundEdgeMiddle",
                 "redBuildingGroundEdgeRight",
             ],
+        ];
+
+        const YellowBuildingRecipe = [
+            ["YellowBuildingFirst", "YellowBuildingMiddle", "YellowBuildingLast"],
+        ];
+
+        const BlueBuildingRecipe = [
+            ["BlueBuildingFirst", "BlueBuildingMiddle", "BlueBuildingLast"],
         ];
 
         const gymRecipe = [["gymUp"], ["gymDown"]];
@@ -169,7 +182,7 @@ export class MainCity extends Phaser.Scene {
         this.buildingOne = new Building(
             this,
             0,
-            0,
+            130,
             "generic-building",
             redBuildingRecipe,
             buildingParts,
@@ -181,7 +194,7 @@ export class MainCity extends Phaser.Scene {
         this.buildingTwo = new Building(
             this,
             114,
-            0,
+            130,
             "generic-building",
             redBuildingRecipe,
             buildingParts,
@@ -193,7 +206,7 @@ export class MainCity extends Phaser.Scene {
         this.buildingThree = new Building(
             this,
             228,
-            0,
+            130,
             "generic-building",
             redBuildingRecipe,
             buildingParts,
@@ -205,9 +218,46 @@ export class MainCity extends Phaser.Scene {
         this.gym = new Building(
             this,
             342,
-            150,
+            292,
             "modular-buildings",
             gymRecipe,
+            buildingParts,
+            1,
+            collisionConfig,
+            true,
+        );
+
+        this.yellowBuilding = new Building(
+            this,
+            880,
+            262,
+            "generic-building",
+            YellowBuildingRecipe,
+            buildingParts,
+            1,
+            collisionConfig,
+            true,
+        );
+
+        // Create the Building instance (16px tiles, scale 1) with debug enabled
+        this.buildingFive = new Building(
+            this,
+            975,
+            130,
+            "generic-building",
+            redBuildingRecipe,
+            buildingParts,
+            1,
+            collisionConfig,
+            true,
+        );
+
+        this.buildingSix = new Building(
+            this,
+            1086,
+            260,
+            "generic-building",
+            BlueBuildingRecipe,
             buildingParts,
             1,
             collisionConfig,
@@ -219,20 +269,42 @@ export class MainCity extends Phaser.Scene {
             this.buildingTwo,
             this.buildingThree,
             this.gym,
+            this.yellowBuilding,
+            this.buildingFive,
+            this.buildingSix
         ];
 
         // Debug Toggle Key
+        this.showDebug = true; // Start true if using building debug
         this.input.keyboard.on("keydown-G", () => {
+            this.showDebug = !this.showDebug;
             this.buildings.forEach((b) => {
-                if (b && b.list) {
-                    b.list.forEach((child) => {
-                        if (child instanceof Phaser.GameObjects.Rectangle) {
-                            child.setVisible(!child.visible);
-                        }
-                    });
+                if (b && b.toggleDebugVisibility) {
+                    b.toggleDebugVisibility(this.showDebug);
                 }
             });
         });
+        // Building Move Mode Listeners
+        this.movingBuilding = null;
+        this.events.on("building-move-start", (building) => {
+            if (this.player) {
+                this.player.frozen = true;
+                this.player.setVelocity(0);
+            }
+            this.movingBuilding = building;
+        });
+        this.events.on("building-move-end", () => {
+            if (this.player) this.player.frozen = false;
+            this.movingBuilding = null;
+        });
+
+        this.input.on("pointerdown", () => {
+            if (this.movingBuilding) {
+                this.movingBuilding.toggleMoveMode();
+            }
+        });
+
+        this.moveKeys = this.input.keyboard.addKeys("W,A,S,D");
 
         // NPCs
         this.npcs = this.physics.add.group();
@@ -367,7 +439,10 @@ export class MainCity extends Phaser.Scene {
                 this.shakeTween = null;
             }
             // Return to center smoothly
-            if (this.cameras.main.followOffset.x !== 0 || this.cameras.main.followOffset.y !== 0) {
+            if (
+                this.cameras.main.followOffset.x !== 0 ||
+                this.cameras.main.followOffset.y !== 0
+            ) {
                 this.tweens.add({
                     targets: this.cameras.main.followOffset,
                     x: 0,
@@ -378,6 +453,18 @@ export class MainCity extends Phaser.Scene {
             }
         }
 
+        // Handle Building WASD Move
+        if (this.movingBuilding && this.moveKeys) {
+            if (Phaser.Input.Keyboard.JustDown(this.moveKeys.W))
+                this.movingBuilding.moveBuilding(0, -16);
+            if (Phaser.Input.Keyboard.JustDown(this.moveKeys.S))
+                this.movingBuilding.moveBuilding(0, 16);
+            if (Phaser.Input.Keyboard.JustDown(this.moveKeys.A))
+                this.movingBuilding.moveBuilding(-16, 0);
+            if (Phaser.Input.Keyboard.JustDown(this.moveKeys.D))
+                this.movingBuilding.moveBuilding(16, 0);
+        }
+
         // Update NPCs
         if (this.npcs) {
             this.npcs.getChildren().forEach((npc) => npc.update(time, delta));
@@ -386,10 +473,7 @@ export class MainCity extends Phaser.Scene {
         // Y-sorting for all relevant objects
         const sortableObjects = [
             this.player,
-            this.buildingOne,
-            this.buildingTwo,
-            this.buildingThree,
-            this.gym,
+            ...this.buildings
         ];
         // Add NPCs if they exist
         if (this.npcs) {

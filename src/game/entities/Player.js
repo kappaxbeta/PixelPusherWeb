@@ -19,6 +19,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       Phaser.Input.Keyboard.KeyCodes.E,
     );
 
+    // Adjust collision box to the feet
+    this.body.setSize(16, 8);
+    this.body.setOffset(0, 24);
+
     // Joystick Input
     this.joystickInput = { x: 0, y: 0 };
     this.isWalking = false;

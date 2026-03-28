@@ -7,7 +7,8 @@ import "./ImageNumerateTool.css";
 //import defaultImage from "../assets/tilesets/5_Floor_Modular_Buildings_16x16.png";
 //import defaultImage from "../assets/tilesets/4_Generic_Buildings_16x16.png";
 //import defaultImage from '../assets/spritesheets/character/Premade_Character_18.png';
-import defaultImage from '../assets/tilesets/2_City_Terrains_16x16.png'
+//import defaultImage from '../assets/tilesets/2_City_Terrains_16x16.png'
+import defaultImage from "../assets/cars/Car_4_16x16_7.png"
 
 const ImageNumerateTool = () => {
     const [imageSrc, setImageSrc] = useState(defaultImage);
@@ -133,9 +134,6 @@ const ImageNumerateTool = () => {
             setCopiedIndex(`Range: ${selectedIndices.length} tiles`);
             setTimeout(() => setCopiedIndex(null), 2000);
         });
-
-        setSelectionStart(null);
-        setSelectionEnd(null);
     };
 
     const handleImageLoad = (e) => {
@@ -155,12 +153,22 @@ const ImageNumerateTool = () => {
 
     const copyCollisionData = () => {
         // Find selection bounds in pixels to normalize collision shapes relative to top-left of selection
-        if (!selectionStart && collisionShapes.length === 0) return;
+        if (collisionShapes.length === 0) return;
+
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (selectionStart && selectionEnd) {
+            const minRow = Math.min(selectionStart.row, selectionEnd.row);
+            const minCol = Math.min(selectionStart.col, selectionEnd.col);
+            offsetX = minCol * tileWidth;
+            offsetY = minRow * tileHeight;
+        }
 
         const dataString = JSON.stringify(
             collisionShapes.map((s) => ({
-                x: s.x,
-                y: s.y,
+                x: s.x - offsetX,
+                y: s.y - offsetY,
                 width: s.w,
                 height: s.h,
                 isSensor: !!s.isSensor,
@@ -168,7 +176,11 @@ const ImageNumerateTool = () => {
         );
 
         navigator.clipboard.writeText(dataString).then(() => {
-            setCopiedIndex("Collision Data Copied");
+            setCopiedIndex(
+                offsetX > 0 || offsetY > 0
+                    ? "Relative Collision Data Copied"
+                    : "Collision Data Copied",
+            );
             setTimeout(() => setCopiedIndex(null), 2000);
         });
     };
@@ -376,6 +388,18 @@ const ImageNumerateTool = () => {
                                 </button>
                             </>
                         )}
+                        {(selectionStart || selectionEnd) && (
+                            <button
+                                className="tool-btn sub-btn"
+                                onClick={() => {
+                                    setSelectionStart(null);
+                                    setSelectionEnd(null);
+                                }}
+                                style={{ marginTop: "10px" }}
+                            >
+                                Clear Selection
+                            </button>
+                        )}
                     </section>
 
                     <div className="info-panel">
@@ -386,6 +410,14 @@ const ImageNumerateTool = () => {
                             Grid: {cols} x {rows}
                         </p>
                         <p>Total Tiles: {totalTiles}</p>
+                        {selectionStart && selectionEnd && (
+                            <div className="selection-stats">
+                                <p style={{ color: "var(--accent-color)" }}>
+                                    Selection: {Math.min(selectionStart.col, selectionEnd.col) * tileWidth},
+                                    {Math.min(selectionStart.row, selectionEnd.row) * tileHeight}px
+                                </p>
+                            </div>
+                        )}
                         {totalTiles > 5000 && (
                             <p className="warning">⚠️ Only displaying first 5000 tiles</p>
                         )}
@@ -404,7 +436,16 @@ const ImageNumerateTool = () => {
                                     : "grab",
                         }}
                         onMouseDown={(e) => {
-                            if (isCollisionMode) {
+                            if (e.shiftKey) {
+                                setIsSelecting(true);
+                                const rect = viewerRef.current.getBoundingClientRect();
+                                const x = (e.clientX - rect.left - imgPos.x) / zoom;
+                                const y = (e.clientY - rect.top - imgPos.y) / zoom;
+                                const col = Math.floor(x / tileWidth);
+                                const row = Math.floor(y / tileHeight);
+                                setSelectionStart({ row, col });
+                                setSelectionEnd({ row, col });
+                            } else if (isCollisionMode) {
                                 setIsDrawingShape(true);
                                 const rect = viewerRef.current.getBoundingClientRect();
                                 const x = Math.round((e.clientX - rect.left - imgPos.x) / zoom);
@@ -414,15 +455,6 @@ const ImageNumerateTool = () => {
                                     ...prev,
                                     { x, y, w: 0, h: 0, id: Date.now() },
                                 ]);
-                            } else if (e.shiftKey) {
-                                setIsSelecting(true);
-                                const rect = viewerRef.current.getBoundingClientRect();
-                                const x = (e.clientX - rect.left - imgPos.x) / zoom;
-                                const y = (e.clientY - rect.top - imgPos.y) / zoom;
-                                const col = Math.floor(x / tileWidth);
-                                const row = Math.floor(y / tileHeight);
-                                setSelectionStart({ row, col });
-                                setSelectionEnd({ row, col });
                             } else {
                                 setIsDragging(true);
                                 setStartPos({
