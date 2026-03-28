@@ -304,23 +304,9 @@ export class MainCity extends Phaser.Scene {
             }
         });
 
-        // Interaction for entering/exiting car
+        // Interaction for entering/exiting car (and all actions)
         this.input.keyboard.on("keydown-E", () => {
-            if (this.blueCar.driver) {
-                this.blueCar.exit();
-                this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
-            } else {
-                const dist = Phaser.Math.Distance.Between(
-                    this.player.x,
-                    this.player.y,
-                    this.blueCar.x,
-                    this.blueCar.y,
-                );
-                if (dist < 60) {
-                    this.blueCar.enter(this.player);
-                    this.cameras.main.startFollow(this.blueCar, true, 0.1, 0.1);
-                }
-            }
+            this.events.emit("player-interact");
         });
 
         // Setup Traffic
@@ -408,6 +394,26 @@ export class MainCity extends Phaser.Scene {
         console.log("MainCity: Overlaps added");
 
         this.events.on("player-interact", () => {
+            // Priority 1: Toggle Car
+            if (this.blueCar.driver) {
+                this.blueCar.exit();
+                this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+                return;
+            } else {
+                const dist = Phaser.Math.Distance.Between(
+                    this.player.x,
+                    this.player.y,
+                    this.blueCar.x,
+                    this.blueCar.y,
+                );
+                if (dist < 60) {
+                    this.blueCar.enter(this.player);
+                    this.cameras.main.startFollow(this.blueCar, true, 0.1, 0.1);
+                    return;
+                }
+            }
+
+            // Priority 2: Triggers
             if (this.activeTrigger === "building") {
                 console.log("Entering Building...");
                 // For now just restart city as a test or go to interior if implemented
