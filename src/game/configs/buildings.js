@@ -59,6 +59,7 @@ const yellowBuildingParts = [
             { x: 0, y: 0, width: 50, height: 154, isSensor: false },
             { x: 38, y: 150, width: 13, height: 36, isSensor: false },
             { x: 0, y: 150, width: 15, height: 33, isSensor: false },
+            { x: 18, y: 158, width: 16, height: 31, isSensor: true, id: "yellow_building_entrance" }
         ],
     },
     {

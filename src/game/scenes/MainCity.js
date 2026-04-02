@@ -6,6 +6,7 @@ import { ModularTerrain } from "../entities/ModularTerrain";
 import { Car } from "../entities/Car";
 import { NPCCar } from "../entities/NPCCar";
 import { EventBus } from "../EventBus";
+import { getNPCResponse } from "../utils/aiService";
 import PlayerSprite from "../../assets/spritesheets/character/Premade_Character_18.png";
 import ModularBuildingsSprite from "../../assets/tilesets/5_Floor_Modular_Buildings_16x16.png";
 import CityTerrainSprite from "../../assets/tilesets/2_City_Terrains_16x16.png";
@@ -190,6 +191,34 @@ export class MainCity extends Phaser.Scene {
                     });
                 },
             },
+            yellow_building_entrance: {
+                onEnter: (sensor) => {
+                    if (this.player.frozen) return;
+                    console.log("--- ENTERING OFFICE ---", sensor.partId);
+
+                    this.player.frozen = true;
+                    this.player.setVelocity(0);
+                    this.player.stop();
+
+                    const returnSpawn = { x: this.player.x, y: this.player.y + 20 };
+                    const config = interiorConfigs["office_test"];
+                    // If the room has an exit portal, point it back to where we came from
+                    if (config.portals && config.portals[0]) {
+                        config.portals[0].spawnPos = returnSpawn;
+                        config.portals[0].target = "MainCity";
+                    }
+
+                    this.cameras.main.fadeOut(500, 0, 0, 0, (camera, progress) => {
+                        if (progress === 1) {
+                            this.scene.start("InteriorScene", {
+                                config,
+                                returnScene: "MainCity",
+                                returnSpawn,
+                            });
+                        }
+                    });
+                },
+            },
         };
 
         // Create Buildings (debug flag removed, follows scene default)
@@ -282,8 +311,8 @@ export class MainCity extends Phaser.Scene {
 
         // NPCs
         this.npcs = this.physics.add.group();
-        const customer1 = new NPC(this, 500, 600, "player", "Big G");
-        const customer2 = new NPC(this, 500, 100, "player", "Lil Smokey");
+        const customer1 = new NPC(this, 500, 600, "player", "Big G", "Street Hustler");
+        const customer2 = new NPC(this, 500, 100, "player", "Lil Smokey", "Stoner Logic Expert");
         this.npcs.add(customer1);
         this.npcs.add(customer2);
 
@@ -351,11 +380,16 @@ export class MainCity extends Phaser.Scene {
                 // Emit event to React TradeDialog
                 this.player.frozen = true;
                 this.activeNPC.frozen = true;
-                EventBus.emit("open-trade", {
-                    npcName: this.activeNPC.npcName,
-                    prompt: this.activeNPC.tradeConfig.prompt,
-                    price: this.activeNPC.tradeConfig.price,
-                    amount: this.activeNPC.tradeConfig.amount,
+
+                // Async fetch AI catchphrase
+                getNPCResponse(this.activeNPC.npcName, this.activeNPC.role).then(aiMsg => {
+                    EventBus.emit("open-trade", {
+                        npcName: this.activeNPC.npcName,
+                        prompt: this.activeNPC.tradeConfig.prompt,
+                        price: this.activeNPC.tradeConfig.price,
+                        amount: this.activeNPC.tradeConfig.amount,
+                        aiResponse: aiMsg // New field for catchphrase
+                    });
                 });
             }
         });

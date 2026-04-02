@@ -3,6 +3,7 @@ import CityGround from "../../assets/tilesets/1_Terrains_and_Fences_16x16.png";
 import CityBuildings from "../../assets/tilesets/4_Generic_Buildings_16x16.png";
 import CityTerrains from "../../assets/tilesets/2_City_Terrains_16x16.png";
 import CityProps from "../../assets/tilesets/3_City_Props_16x16.png";
+import RoomBuilder from "../../assets/interior/builder/Room_Builder_16x16.png";
 import PlayerSprite from "../../assets/spritesheets/character/Premade_Character_18.png";
 import PlayerImage from "../../assets/spritesheets/character/Premade_Character_18.png";
 import BGMusic from "../../assets/music/bg_music.mp3";
@@ -62,6 +63,10 @@ export class BootScene extends Phaser.Scene {
       frameHeight: 16,
     });
     this.load.spritesheet("city-props", CityProps, {
+      frameWidth: 16,
+      frameHeight: 16,
+    });
+    this.load.spritesheet("room-builder", RoomBuilder, {
       frameWidth: 16,
       frameHeight: 16,
     });

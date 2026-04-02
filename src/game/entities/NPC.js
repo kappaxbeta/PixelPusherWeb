@@ -1,8 +1,8 @@
 import Phaser from "phaser";
 
 export class NPC extends Phaser.Physics.Arcade.Sprite {
-  constructor(scene, x, y, texture, name, tradeConfig) {
-    console.log("NPC: Constructor started: " + name);
+  constructor(scene, x, y, texture, name, role = "Citizen", tradeConfig) {
+    console.log("NPC: Constructor started: " + name + " as " + role);
     super(scene, x, y, texture);
 
     scene.add.existing(this);
@@ -12,6 +12,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
     this.setCollideWorldBounds(true);
 
     this.npcName = name;
+    this.role = role;
     this.isWaitingForDelivery = true;
     this.setScale(1);
     this.speed = 30; // Slightly slower than player
@@ -30,6 +31,7 @@ export class NPC extends Phaser.Physics.Arcade.Sprite {
       amount: 1,
       price: 50,
       prompt: `Sell 1g for $50?`,
+      aiResponse: "Got the goods?", // Static fallback
     };
 
     // Add name tag

@@ -21,5 +21,5 @@ export const config = {
       debug: false,
     },
   },
-  scene: [MainCity, BootScene, InteriorScene],
+  scene: [BootScene, MainCity, InteriorScene],
 };

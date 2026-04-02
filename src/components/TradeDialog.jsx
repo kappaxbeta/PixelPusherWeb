@@ -7,6 +7,7 @@ const TradeDialog = ({
   inventory,
   onSell,
   onClose,
+  aiResponse,
 }) => {
   return (
     <div
@@ -41,6 +42,25 @@ const TradeDialog = ({
       >
         Deal with {npcName}
       </h2>
+
+      {aiResponse && (
+        <div
+          style={{
+            backgroundColor: "rgba(0, 255, 255, 0.1)",
+            borderLeft: "4px solid #00ffff",
+            padding: "15px",
+            margin: "0 0 20px 0",
+            borderRadius: "8px",
+            width: "100%",
+            fontStyle: "italic",
+            color: "#00ffff",
+            fontSize: "16px",
+            lineHeight: "1.4",
+          }}
+        >
+          "{aiResponse}"
+        </div>
+      )}
 
       <p
         style={{
