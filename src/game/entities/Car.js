@@ -97,8 +97,10 @@ export class Car extends Phaser.GameObjects.Container {
     tiles.forEach((tileIdx, i) => {
       const col = i % cols;
       const row = Math.floor(i / cols);
-      const sprite = this.scene.add.sprite(col * 16, row * 16, this.textureKey, tileIdx);
-      sprite.setOrigin(0);
+      // Safety: clamp index to 1200 (10 rows of 120 tiles)
+      const safeIdx = tileIdx % 1200;
+      const sprite = this.scene.add.sprite(col * 16, row * 16, this.textureKey, safeIdx);
+      sprite.setOrigin(0, 0);
       this.add(sprite);
       this.sprites.push(sprite);
     });
@@ -210,7 +212,11 @@ export class Car extends Phaser.GameObjects.Container {
       const rows = isHorizontal ? 3 : 6;
 
       if (this.sprites.length === currentFrameTiles.length) {
-        this.sprites.forEach((s, i) => s.setFrame(currentFrameTiles[i]));
+        this.sprites.forEach((s, i) => {
+          // Safety: ensure frame is within 0-1199 range (10 rows of 120 tiles)
+          const safeFrame = currentFrameTiles[i] % 1200;
+          s.setFrame(safeFrame);
+        });
       } else {
         this.renderTiles(currentFrameTiles, cols, rows);
       }
@@ -224,7 +230,10 @@ export class Car extends Phaser.GameObjects.Container {
     const rows = isHorizontal ? 3 : 6;
 
     if (this.sprites.length === idle.tiles.length) {
-      this.sprites.forEach((s, i) => s.setFrame(idle.tiles[i]));
+      this.sprites.forEach((s, i) => {
+        const safeFrame = idle.tiles[i] % 1200;
+        s.setFrame(safeFrame);
+      });
     } else {
       this.renderTiles(idle.tiles, cols, rows);
     }

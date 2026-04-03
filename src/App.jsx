@@ -16,6 +16,7 @@ function GameView() {
     prompt: "",
     price: 0,
     amount: 1,
+    aiResponse: "",
   });
 
   useEffect(() => {
@@ -31,15 +32,25 @@ function GameView() {
         prompt: data.prompt,
         price: data.price,
         amount: data.amount || 1,
+        aiResponse: data.aiResponse || "",
       });
     };
 
+    const handleUpdateAI = (data) => {
+      setTradeData((prev) => ({
+        ...prev,
+        aiResponse: data.aiResponse,
+      }));
+    };
+    
     EventBus.on("delivery-complete", handleDelivery);
     EventBus.on("open-trade", handleOpenTrade);
+    EventBus.on("update-trade-ai", handleUpdateAI);
 
     return () => {
       EventBus.off("delivery-complete", handleDelivery);
       EventBus.off("open-trade", handleOpenTrade);
+      EventBus.off("update-trade-ai", handleUpdateAI);
     };
   }, []);
 
@@ -91,6 +102,7 @@ function GameView() {
           prompt={tradeData.prompt}
           price={tradeData.price}
           inventory={inventory}
+          aiResponse={tradeData.aiResponse}
           onSell={handleSell}
           onClose={closeTrade}
         />

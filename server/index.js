@@ -1,71 +1,93 @@
-import { getLlama, LlamaModel, LlamaContext, LlamaChatSession } from "node-llama-cpp";
 import express from "express";
 import cors from "cors";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
+import axios from "axios";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const MODEL_PATH = path.join(__dirname, "models", "gemma-4-E2B-it-Q4_K_M.gguf");
-
-let model;
-let llama;
-
-async function initModel() {
-    if (!fs.existsSync(MODEL_PATH)) {
-        console.warn(`[AI Server] Model not found at ${MODEL_PATH}.`);
-        console.warn(`[AI Server] Please run 'node download-model.js' to get the file.`);
-        return;
-    }
-    
-    try {
-        console.log("[AI Server] Initializing Llama...");
-        llama = await getLlama();
-        console.log("[AI Server] Loading Gemma 4 E2B (GGUF)...");
-        model = await llama.loadModel({ modelPath: MODEL_PATH });
-        console.log("[AI Server] Model Loaded successfully!");
-    } catch (err) {
-        console.error("[AI Server] Failed to load model:", err);
-    }
-}
+const OLLAMA_URL = "http://localhost:11434/api/chat";
+const MODEL_NAME = "gemma4:e2b";
 
 app.post("/api/ai/generate", async (req, res) => {
-    if (!model) {
-        return res.status(503).json({ error: "Model not loaded. Ensure the .gguf file exists in server/models/" });
-    }
-
     try {
         const { prompt, systemPrompt } = req.body;
-        console.log(`[AI Server] Generating response for: "${prompt.substring(0, 50)}..."`);
         
-        const context = await model.createContext();
-        const session = new LlamaChatSession({ 
-            context,
-            systemPrompt: systemPrompt || "You are a helpful NPC in a futuristic cyberpunk city. Be concise and stay in character."
-        });
+        console.log(`[AI Proxy] Forwarding request to Ollama Chat for: "${prompt.substring(0, 50)}..."`);
         
-        const response = await session.prompt(prompt);
-        res.json({ response });
+        const response = await axios.post(OLLAMA_URL, {
+            model: MODEL_NAME,
+            messages: [
+                { 
+                    role: "system", 
+                    content: systemPrompt + " STRICT RULE: Output ONLY the NPC dialogue. Do not include any thinking, reasoning, internal monologue, or meta-commentary. Do not use numbered lists or bold headers. IMPORTANT: DO NOT include 'Thinking Process' or any reasoning in your response. JUMP DIRECTLY TO THE DIALOGUE. IF YOU INCLUDE REASONING, THE GAME WILL BREAK." 
+                },
+                { role: "user", content: prompt }
+            ],
+            stream: false,
+            options: {
+                num_predict: 500,
+                temperature: 0.9,
+                top_p: 0.9
+            }
+        }, { timeout: 60000 });
+
+        // Ollama Chat API returns { message: { content: "...", thinking: "..." } }
+        const message = response.data.message;
+        let aiResponse = (message?.content || message?.thinking || "").trim();
+        console.log(`[AI Proxy] Raw response: "${aiResponse}"`);
+        
+        const originalResponse = aiResponse;
+        
+        // Clean up Gemma 4 reasoning / prompt echoes
+        aiResponse = aiResponse.replace(/Thinking Process:[\s\S]*?(?=\n\n|\n[0-9]|\.\.\.done thinking|$)/gi, "");
+        aiResponse = aiResponse.replace(/^\s*\*.*$/gm, ""); // Remove lines starting with *
+        aiResponse = aiResponse.replace(/^[0-9]\.\s.*\n?/gm, ""); // Remove numbered lists
+        aiResponse = aiResponse.replace(/\*\*.*\*\*:\s?/g, ""); // Remove bold headers (e.g. **Character**:)
+        aiResponse = aiResponse.replace(/\.\.\.done thinking\.?/gi, "");
+        
+        // Remove any remnant of the system instruction phrases IF they are at the start
+        aiResponse = aiResponse.replace(/^Respond as this character.*/gi, "");
+        aiResponse = aiResponse.replace(/^Output ONLY.* dialogue/gi, "");
+        
+        aiResponse = aiResponse.trim();
+        
+        // If stripping removed everything useful, but we had a response, use the original (capped)
+        if (!aiResponse && originalResponse) {
+            aiResponse = originalResponse.substring(0, 200).replace(/\n/g, " ");
+        }
+        
+        // Final fallback if totally empty
+        if (!aiResponse) {
+            aiResponse = "You lookin' for the good stuff or what?";
+        }
+
+        console.log(`[AI Proxy] Final cleaned response: "${aiResponse}"`);
+        res.json({ response: aiResponse });
     } catch (err) {
-        console.error("[AI Server] Generative Error:", err);
-        res.status(500).json({ error: err.message });
+        console.error("[AI Proxy] Error communicating with Ollama:", err.response?.data || err.message);
+        res.status(500).json({ 
+            error: "Ollama Error", 
+            message: err.response?.data?.error || err.message
+        });
     }
 });
 
-app.get("/health", (req, res) => {
-    res.json({ 
-        status: "alive", 
-        modelLoaded: !!model,
-        modelPath: MODEL_PATH 
-    });
+app.get("/health", async (req, res) => {
+    try {
+        const response = await axios.get("http://localhost:11434/api/tags");
+        res.json({ 
+            status: "alive", 
+            engine: "Ollama (Go)",
+            models: response.data.models.map(m => m.name)
+        });
+    } catch (err) {
+        res.json({ status: "degraded", message: "Ollama not reachable" });
+    }
 });
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`[AI Server] Listening on http://localhost:${PORT}`);
-    initModel();
+    console.log(`[AI Proxy] Listening on http://localhost:${PORT}`);
+    console.log(`[AI Proxy] Using Go-based Ollama engine for Gemma 4 support.`);
 });

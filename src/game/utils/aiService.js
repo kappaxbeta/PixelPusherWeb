@@ -5,17 +5,24 @@
 
 const BACKEND_URL = "http://localhost:3001/api/ai/generate";
 
+import { economy } from "./economy";
+
 export async function getNPCResponse(npcName, role, context = "talking to a player") {
     console.log(`[AI Service] Requesting response for ${npcName} (${role})...`);
 
-    const prompt = `Give me a short, 1-sentence catchphrase or response as ${npcName}. Context: ${context}.`;
+    const marketSummary = economy.getEconomySummary();
+    const moods = ["suspicious", "aggressive", "friendly", "hurried", "mysterious", "cynical", "greedy", "paranoid"];
+    const mood = moods[Math.floor(Math.random() * moods.length)];
+
+    const prompt = `State of mind: ${mood}. Market: ${marketSummary}. Give me a 1-sentence catchphrase for ${npcName}.`;
     const systemPrompt = `
-        You are ${npcName}, a ${role} in the futuristic cyberpunk city of Pixelopolis. 
-        Your responses must be:
-        1. Very short (one sentence maximal).
-        2. In-character for a ${role}.
-        3. Gruff, street-smart, or mysterious depending on your personality.
-        4. Focus on the vibe of a "Weed Empire" street life.
+        You are ${npcName}, a ${role} in our cyberpunk city. 
+        Current State: You are feeling ${mood}.
+        Current Market: ${marketSummary}.
+        STRICT RULES:
+        1. Output ONLY dialogue (one short sentence).
+        2. No labels, no headers, no thinking process.
+        3. Stay in character for a ${role} who is ${mood}.
     `;
 
     try {

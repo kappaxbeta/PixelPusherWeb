@@ -16,6 +16,8 @@ import BlueCar from "../../assets/cars/Car_4_16x16_7.png";
 import interiorConfigs from "../configs/interior";
 import { buildingsparts, gymParts } from "../configs/buildings";
 import { generateCityGrid, TStyle } from "../utils/cityGenerator";
+import { economy } from "../utils/economy";
+
 export class MainCity extends Phaser.Scene {
     constructor() {
         super("MainCity");
@@ -108,6 +110,13 @@ export class MainCity extends Phaser.Scene {
         this.cameras.main.setZoom(2);
         this.cameras.main.roundPixels = true;
         this.cameras.main.fadeIn(500, 0, 0, 0);
+
+        // Economy System Timer (Syncs market every 30 seconds)
+        this.time.addEvent({
+            delay: 30000,
+            callback: () => economy.tick(),
+            loop: true
+        });
 
         // Granular Building Part Library with explicit widths
         const buildingParts = buildingsparts;
@@ -381,15 +390,18 @@ export class MainCity extends Phaser.Scene {
                 this.player.frozen = true;
                 this.activeNPC.frozen = true;
 
-                // Async fetch AI catchphrase
+                // 1. Open trade menu immediately with "Thinking..."
+                EventBus.emit("open-trade", {
+                    npcName: this.activeNPC.npcName,
+                    prompt: this.activeNPC.tradeConfig.prompt,
+                    price: this.activeNPC.tradeConfig.price,
+                    amount: this.activeNPC.tradeConfig.amount,
+                    aiResponse: "Thinking..." // Immediate placeholder
+                });
+
+                // 2. Fetch real AI catchphrase in background
                 getNPCResponse(this.activeNPC.npcName, this.activeNPC.role).then(aiMsg => {
-                    EventBus.emit("open-trade", {
-                        npcName: this.activeNPC.npcName,
-                        prompt: this.activeNPC.tradeConfig.prompt,
-                        price: this.activeNPC.tradeConfig.price,
-                        amount: this.activeNPC.tradeConfig.amount,
-                        aiResponse: aiMsg // New field for catchphrase
-                    });
+                    EventBus.emit("update-trade-ai", { aiResponse: aiMsg });
                 });
             }
         });

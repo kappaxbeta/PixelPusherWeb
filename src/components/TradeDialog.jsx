@@ -1,4 +1,4 @@
-import React from "react";
+import { economy } from "../game/utils/economy";
 
 const TradeDialog = ({
   npcName,
@@ -9,6 +9,13 @@ const TradeDialog = ({
   onClose,
   aiResponse,
 }) => {
+  const handleSell = () => {
+    // 1. Update the background economy model
+    economy.onSell(10); // Standard deal size
+    // 2. Trigger the original callback for local inventory/gold
+    if (onSell) onSell();
+  };
+
   return (
     <div
       style={{
@@ -93,7 +100,7 @@ const TradeDialog = ({
         }}
       >
         <button
-          onClick={onSell}
+          onClick={handleSell}
           disabled={inventory <= 0}
           style={{
             flex: 1,
